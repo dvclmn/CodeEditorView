@@ -148,7 +148,7 @@ extension GutterView {
        let (y: y, height: height) = textLayoutManager.textLayoutFragmentExtent(for: textRange),
         height > 0
     {
-      setNeedsDisplay(gutterRectFrom(y: y, height: height))
+//      setNeedsDisplay(gutterRectFrom(y: y, height: height))
     }
 
     if charRange.max == string.length,
@@ -205,7 +205,7 @@ extension GutterView {
         characterRange = textContentStorage.range(for: textRange)
 
     // Draw line numbers unless this is a gutter for a minimap
-    if !isMinimapGutter {
+      if !isMinimapGutter && theme.hasLineNumbers {
 
       let lineRange = lineMap.linesOf(range: characterRange)
 

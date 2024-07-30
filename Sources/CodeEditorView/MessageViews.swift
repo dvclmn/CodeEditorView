@@ -537,7 +537,7 @@ struct MessageViews_Previews: PreviewProvider {
                       background: lightBackground,
                       invalidated: false)
       .frame(width: 180, height: 15, alignment: .center)
-      .preferredColorScheme(.light)
+      .preferredColorScheme(.dark)
 
     // Popup view
 
@@ -564,7 +564,7 @@ struct MessageViews_Previews: PreviewProvider {
                      theme: Message.defaultTheme,
                      invalidated: false)
       .frame(maxWidth: 320, minHeight: 15)
-      .preferredColorScheme(.light)
+      .preferredColorScheme(.dark)
 
     // Combined view
 

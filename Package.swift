@@ -21,7 +21,9 @@ let package = Package(
   dependencies: [
     .package(
       url: "https://github.com/ChimeHQ/Rearrange.git",
-      .upToNextMajor(from: "1.6.0")),
+      .upToNextMajor(from: "1.8.1")
+    ),
+    .package(name: "TestStrings", path: "../TestStrings"),
   ],
   targets: [
     .target(
@@ -37,6 +39,7 @@ let package = Package(
       dependencies: [
         "LanguageSupport",
         "Rearrange",
+        "TestStrings"
       ]),
     .testTarget(
       name: "CodeEditorTests",

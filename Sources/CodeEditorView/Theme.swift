@@ -1,6 +1,6 @@
 //
 //  Theme.swift
-//  
+//
 //
 //  Created by Manuel M T Chakravarty on 14/05/2021.
 //
@@ -16,175 +16,182 @@ import SwiftUI
 ///     not be a particularily frequent operation.
 ///
 public struct Theme: Identifiable {
-  public private(set) var id = UUID()
-
-  /// The colour scheme of the theme.
-  ///
-  public var colourScheme: ColorScheme {
-    didSet { id = UUID() }
-  }
-
-  /// The name of the font to use.
-  ///
-  public var fontName: String {
-    didSet { id = UUID() }
-  }
-
-  /// The point size of the font to use.
-  ///
-  public var fontSize: CGFloat {
-    didSet { id = UUID() }
-  }
-
-  /// The default foreground text colour.
-  ///
-  public var textColour: OSColor {
-    didSet { id = UUID() }
-  }
-
-  /// The colour for (all kinds of) comments.
-  ///
-  public var commentColour: OSColor {
-    didSet { id = UUID() }
-  }
-
-  /// The colour for string literals.
-  ///
-  public var stringColour: OSColor {
-    didSet { id = UUID() }
-  }
-
-  /// The colour for character literals.
-  ///
-  public var characterColour: OSColor {
-    didSet { id = UUID() }
-  }
-
-  /// The colour for number literals.
-  ///
-  public var numberColour: OSColor {
-    didSet { id = UUID() }
-  }
-
-  /// The colour for identifiers.
-  ///
-  public var identifierColour: OSColor {
-    didSet { id = UUID() }
-  }
-
-  /// The colour for operators.
-  ///
-  public var operatorColour: OSColor {
-    didSet { id = UUID() }
-  }
-
-  /// The colour for keywords.
-  ///
-  public var keywordColour: OSColor {
-    didSet { id = UUID() }
-  }
-
-  /// The colour for reserved symbols.
-  ///
-  public var symbolColour: OSColor {
-    didSet { id = UUID() }
-  }
-
-  /// The colour for type names (identifiers and operators).
-  ///
-  public var typeColour: OSColor {
-    didSet { id = UUID() }
-  }
-
-  /// The colour for field names.
-  ///
-  public var fieldColour: OSColor {
-    didSet { id = UUID() }
-  }
-
-  /// The colour for names of alternatives.
-  ///
-  public var caseColour: OSColor {
-    didSet { id = UUID() }
-  }
-
-  /// The background colour.
-  ///
-  public var backgroundColour: OSColor {
-    didSet { id = UUID() }
-  }
-
-  /// The colour of the current line highlight.
-  ///
-  public var currentLineColour: OSColor {
-    didSet { id = UUID() }
-  }
-
-  /// The colour to use for the selection highlight.
-  ///
-  public var selectionColour: OSColor {
-    didSet { id = UUID() }
-  }
-
-  /// The cursor colour.
-  ///
-  public var cursorColour: OSColor {
-    didSet { id = UUID() }
-  }
-
-  /// The colour to use if invisibles are drawn.
-  ///
-  public var invisiblesColour: OSColor {
-    didSet { id = UUID() }
-  }
-
-  public init(colourScheme: ColorScheme,
-              fontName: String,
-              fontSize: CGFloat,
-              textColour: OSColor,
-              commentColour: OSColor,
-              stringColour: OSColor,
-              characterColour: OSColor,
-              numberColour: OSColor,
-              identifierColour: OSColor,
-              operatorColour: OSColor,
-              keywordColour: OSColor,
-              symbolColour: OSColor,
-              typeColour: OSColor,
-              fieldColour: OSColor,
-              caseColour: OSColor,
-              backgroundColour: OSColor,
-              currentLineColour: OSColor,
-              selectionColour: OSColor,
-              cursorColour: OSColor,
-              invisiblesColour: OSColor)
-  {
-    self.colourScheme = colourScheme
-    self.fontName = fontName
-    self.fontSize = fontSize
-    self.textColour = textColour
-    self.commentColour = commentColour
-    self.stringColour = stringColour
-    self.characterColour = characterColour
-    self.numberColour = numberColour
-    self.identifierColour = identifierColour
-    self.operatorColour = operatorColour
-    self.keywordColour = keywordColour
-    self.symbolColour = symbolColour
-    self.typeColour = typeColour
-    self.fieldColour = fieldColour
-    self.caseColour = caseColour
-    self.backgroundColour = backgroundColour
-    self.currentLineColour = currentLineColour
-    self.selectionColour = selectionColour
-    self.cursorColour = cursorColour
-    self.invisiblesColour = invisiblesColour
-  }
+    public private(set) var id = UUID()
+    
+    /// The colour scheme of the theme.
+    ///
+    public var colourScheme: ColorScheme {
+        didSet { id = UUID() }
+    }
+    
+    public var hasLineNumbers: Bool {
+        didSet { id = UUID() }
+    }
+    
+    /// The name of the font to use.
+    ///
+    public var fontName: String {
+        didSet { id = UUID() }
+    }
+    
+    /// The point size of the font to use.
+    ///
+    public var fontSize: CGFloat {
+        didSet { id = UUID() }
+    }
+    
+    /// The default foreground text colour.
+    ///
+    public var textColour: OSColor {
+        didSet { id = UUID() }
+    }
+    
+    /// The colour for (all kinds of) comments.
+    ///
+    public var commentColour: OSColor {
+        didSet { id = UUID() }
+    }
+    
+    /// The colour for string literals.
+    ///
+    public var stringColour: OSColor {
+        didSet { id = UUID() }
+    }
+    
+    /// The colour for character literals.
+    ///
+    public var characterColour: OSColor {
+        didSet { id = UUID() }
+    }
+    
+    /// The colour for number literals.
+    ///
+    public var numberColour: OSColor {
+        didSet { id = UUID() }
+    }
+    
+    /// The colour for identifiers.
+    ///
+    public var identifierColour: OSColor {
+        didSet { id = UUID() }
+    }
+    
+    /// The colour for operators.
+    ///
+    public var operatorColour: OSColor {
+        didSet { id = UUID() }
+    }
+    
+    /// The colour for keywords.
+    ///
+    public var keywordColour: OSColor {
+        didSet { id = UUID() }
+    }
+    
+    /// The colour for reserved symbols.
+    ///
+    public var symbolColour: OSColor {
+        didSet { id = UUID() }
+    }
+    
+    /// The colour for type names (identifiers and operators).
+    ///
+    public var typeColour: OSColor {
+        didSet { id = UUID() }
+    }
+    
+    /// The colour for field names.
+    ///
+    public var fieldColour: OSColor {
+        didSet { id = UUID() }
+    }
+    
+    /// The colour for names of alternatives.
+    ///
+    public var caseColour: OSColor {
+        didSet { id = UUID() }
+    }
+    
+    /// The background colour.
+    ///
+    public var backgroundColour: OSColor {
+        didSet { id = UUID() }
+    }
+    
+    /// The colour of the current line highlight.
+    ///
+    public var currentLineColour: OSColor {
+        didSet { id = UUID() }
+    }
+    
+    /// The colour to use for the selection highlight.
+    ///
+    public var selectionColour: OSColor {
+        didSet { id = UUID() }
+    }
+    
+    /// The cursor colour.
+    ///
+    public var cursorColour: OSColor {
+        didSet { id = UUID() }
+    }
+    
+    /// The colour to use if invisibles are drawn.
+    ///
+    public var invisiblesColour: OSColor {
+        didSet { id = UUID() }
+    }
+    
+    public init(
+        colourScheme: ColorScheme,
+        hasLineNumbers: Bool = false,
+        fontName: String = Theme.defaultDark.fontName,
+        fontSize: CGFloat = Theme.defaultDark.fontSize,
+        textColour: OSColor = Theme.defaultDark.textColour,
+        commentColour: OSColor = Theme.defaultDark.commentColour,
+        stringColour: OSColor = Theme.defaultDark.stringColour,
+        characterColour: OSColor = Theme.defaultDark.characterColour,
+        numberColour: OSColor = Theme.defaultDark.numberColour,
+        identifierColour: OSColor = Theme.defaultDark.identifierColour,
+        operatorColour: OSColor = Theme.defaultDark.operatorColour,
+        keywordColour: OSColor = Theme.defaultDark.keywordColour,
+        symbolColour: OSColor = Theme.defaultDark.symbolColour,
+        typeColour: OSColor = Theme.defaultDark.typeColour,
+        fieldColour: OSColor = Theme.defaultDark.fieldColour,
+        caseColour: OSColor = Theme.defaultDark.caseColour,
+        backgroundColour: OSColor = Theme.defaultDark.backgroundColour,
+        currentLineColour: OSColor = Theme.defaultDark.currentLineColour,
+        selectionColour: OSColor = Theme.defaultDark.selectionColour,
+        cursorColour: OSColor = Theme.defaultDark.cursorColour,
+        invisiblesColour: OSColor = Theme.defaultDark.invisiblesColour)
+    {
+        self.colourScheme = colourScheme
+        self.hasLineNumbers = hasLineNumbers
+        self.fontName = fontName
+        self.fontSize = fontSize
+        self.textColour = textColour
+        self.commentColour = commentColour
+        self.stringColour = stringColour
+        self.characterColour = characterColour
+        self.numberColour = numberColour
+        self.identifierColour = identifierColour
+        self.operatorColour = operatorColour
+        self.keywordColour = keywordColour
+        self.symbolColour = symbolColour
+        self.typeColour = typeColour
+        self.fieldColour = fieldColour
+        self.caseColour = caseColour
+        self.backgroundColour = backgroundColour
+        self.currentLineColour = currentLineColour
+        self.selectionColour = selectionColour
+        self.cursorColour = cursorColour
+        self.invisiblesColour = invisiblesColour
+    }
 }
 
 extension Theme: Equatable {
-
-  public static func ==(lhs: Theme, rhs: Theme) -> Bool { lhs.id == rhs.id }
+    
+    public static func ==(lhs: Theme, rhs: Theme) -> Bool { lhs.id == rhs.id }
 }
 
 /// A theme catalog indexing themes by name
@@ -192,8 +199,17 @@ extension Theme: Equatable {
 typealias Themes = [String: Theme]
 
 extension Theme {
-
-  public static var defaultDark: Theme
+    
+    public static var defaultDarkNoBackground: Theme {
+        var theme: Theme = Theme.defaultDark
+        theme.hasLineNumbers = false
+        theme.backgroundColour = .clear
+        theme.currentLineColour = .white.withAlphaComponent(0.06)
+        
+        return theme
+    }
+    
+    public static var defaultDark: Theme
     = Theme(colourScheme: .dark,
             fontName: "SFMono-Medium",
             fontSize: 13.0,
@@ -214,9 +230,9 @@ extension Theme {
             selectionColour: OSColor(red: 0.40, green: 0.44, blue: 0.51, alpha: 1.0),
             cursorColour: OSColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0),
             invisiblesColour: OSColor(red: 0.33, green: 0.37, blue: 0.42, alpha: 1.0))
-
-  public static var defaultLight: Theme
-    = Theme(colourScheme: .light,
+    
+    public static var defaultLight: Theme
+    = Theme(colourScheme: .dark,
             fontName: "SFMono-Medium",
             fontSize: 13.0,
             textColour: OSColor(red: 0.15, green: 0.15, blue: 0.15, alpha: 1.0),
@@ -239,58 +255,58 @@ extension Theme {
 }
 
 extension Theme {
-
-  /// Font object on the basis of the font name and size of the theme.
-  ///
-  var font: OSFont {
-    if fontName.hasPrefix("SFMono-") {
-
-      let weightString = fontName.dropFirst("SFMono-".count)
-      let weight       : OSFont.Weight
-      switch weightString {
-      case "UltraLight": weight = .ultraLight
-      case "Thin":       weight = .thin
-      case "Light":      weight = .light
-      case "Regular":    weight = .regular
-      case "Medium":     weight = .medium
-      case "Semibold":   weight = .semibold
-      case "Bold":       weight = .bold
-      case "Heavy":      weight = .heavy
-      case "Black":      weight = .black
-      default:           weight = .regular
-      }
-      return OSFont.monospacedSystemFont(ofSize: fontSize, weight: weight)
-
-    } else {
-
-      return OSFont(name: fontName, size: fontSize) ?? OSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
-
+    
+    /// Font object on the basis of the font name and size of the theme.
+    ///
+    var font: OSFont {
+        if fontName.hasPrefix("SFMono-") {
+            
+            let weightString = fontName.dropFirst("SFMono-".count)
+            let weight       : OSFont.Weight
+            switch weightString {
+            case "UltraLight": weight = .ultraLight
+            case "Thin":       weight = .thin
+            case "Light":      weight = .light
+            case "Regular":    weight = .regular
+            case "Medium":     weight = .medium
+            case "Semibold":   weight = .semibold
+            case "Bold":       weight = .bold
+            case "Heavy":      weight = .heavy
+            case "Black":      weight = .black
+            default:           weight = .regular
+            }
+            return OSFont.monospacedSystemFont(ofSize: fontSize, weight: weight)
+            
+        } else {
+            
+            return OSFont(name: fontName, size: fontSize) ?? OSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
+            
+        }
     }
-  }
-
-  #if os(iOS) || os(visionOS)
-
-  /// Tint colour on the basis of the cursor and selection colour of the theme.
-  ///
-  var tintColour: UIColor {
-    var selectionHue        = CGFloat(0.0),
-        selectionSaturation = CGFloat(0.0),
-        selectionBrigthness = CGFloat(0.0),
-        cursorHue           = CGFloat(0.0),
-        cursorSaturation    = CGFloat(0.0),
-        cursorBrigthness    = CGFloat(0.0)
-
-    // TODO: This is awkward...
-    selectionColour.getHue(&selectionHue,
-                           saturation: &selectionSaturation,
-                           brightness: &selectionBrigthness,
-                           alpha: nil)
-    cursorColour.getHue(&cursorHue, saturation: &cursorSaturation, brightness: &cursorBrigthness, alpha: nil)
-    return UIColor(hue: selectionHue,
-                   saturation: 1.0,
-                   brightness: selectionBrigthness,
-                   alpha: 1.0)
-  }
-
-  #endif
+    
+#if os(iOS) || os(visionOS)
+    
+    /// Tint colour on the basis of the cursor and selection colour of the theme.
+    ///
+    var tintColour: UIColor {
+        var selectionHue        = CGFloat(0.0),
+            selectionSaturation = CGFloat(0.0),
+            selectionBrigthness = CGFloat(0.0),
+            cursorHue           = CGFloat(0.0),
+            cursorSaturation    = CGFloat(0.0),
+            cursorBrigthness    = CGFloat(0.0)
+        
+        // TODO: This is awkward...
+        selectionColour.getHue(&selectionHue,
+                               saturation: &selectionSaturation,
+                               brightness: &selectionBrigthness,
+                               alpha: nil)
+        cursorColour.getHue(&cursorHue, saturation: &cursorSaturation, brightness: &cursorBrigthness, alpha: nil)
+        return UIColor(hue: selectionHue,
+                       saturation: 1.0,
+                       brightness: selectionBrigthness,
+                       alpha: 1.0)
+    }
+    
+#endif
 }
