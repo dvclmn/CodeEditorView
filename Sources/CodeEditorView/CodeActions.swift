@@ -541,3 +541,19 @@ extension CodeView {
 }
 
 #endif
+
+
+struct PopoverExample: View {
+    
+    var body: some View {
+        
+        Text("Hello")
+        
+    }
+}
+#Preview {
+    PopoverExample()
+        .padding(40)
+        .frame(width: 600, height: 700)
+        .background(.black.opacity(0.6))
+}

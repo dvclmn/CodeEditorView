@@ -148,7 +148,7 @@ extension GutterView {
        let (y: y, height: height) = textLayoutManager.textLayoutFragmentExtent(for: textRange),
         height > 0
     {
-//      setNeedsDisplay(gutterRectFrom(y: y, height: height))
+      setNeedsDisplay(gutterRectFrom(y: y, height: height))
     }
 
     if charRange.max == string.length,

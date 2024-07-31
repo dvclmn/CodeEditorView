@@ -282,9 +282,19 @@ extension CodeStorage {
   /// NB: In this representation tokens and comments never extend across lines.
   ///
   struct LineToken {
-    enum Kind {
+      
+      enum Kind {
       case comment
       case token(LanguageConfiguration.Token)
+          
+          var name: String {
+              switch self {
+              case .comment:
+                  "Comment"
+              case .token(let token):
+                  "Token: \(token.name)"
+              }
+          }
     }
 
     /// Token range, relative to the start of the document.

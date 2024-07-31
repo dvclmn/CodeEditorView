@@ -1,6 +1,6 @@
 //
 //  MinimapView.swift
-//  
+//
 //
 //  Created by Manuel M T Chakravarty on 05/05/2021.
 //
@@ -31,35 +31,35 @@ let minimapRatio = CGFloat(8)
 /// Customised text view for the minimap.
 ///
 class MinimapView: UITextView {
-  weak var codeView: CodeView?
-
-  // Highlight the current line.
-  //
-  override func draw(_ rect: CGRect) {
-    super.draw(rect)
-
-    let rectWithinBounds = rect.intersection(bounds)
-
-    guard let textLayoutManager  = textLayoutManager,
-          let textContentStorage = textLayoutManager.textContentManager as? NSTextContentStorage
-    else { return }
-
-    let viewportRange = textLayoutManager.textViewportLayoutController.viewportRange
-
-    // If the selection is an insertion point, highlight the corresponding line
-    if let location     = codeView?.insertionPoint,
-       let textLocation = textContentStorage.textLocation(for: location)
-    {
-      if viewportRange == nil
-          || viewportRange!.contains(textLocation)
-          || viewportRange!.endLocation.compare(textLocation) == .orderedSame
-      {
-        drawBackgroundHighlight(within: rectWithinBounds,
-                                forLineContaining: textLocation,
-                                withColour: codeView?.theme.currentLineColour ?? .systemBackground)
-      }
+    weak var codeView: CodeView?
+    
+    // Highlight the current line.
+    //
+    override func draw(_ rect: CGRect) {
+        super.draw(rect)
+        
+        let rectWithinBounds = rect.intersection(bounds)
+        
+        guard let textLayoutManager  = textLayoutManager,
+              let textContentStorage = textLayoutManager.textContentManager as? NSTextContentStorage
+        else { return }
+        
+        let viewportRange = textLayoutManager.textViewportLayoutController.viewportRange
+        
+        // If the selection is an insertion point, highlight the corresponding line
+        if let location     = codeView?.insertionPoint,
+           let textLocation = textContentStorage.textLocation(for: location)
+        {
+            if viewportRange == nil
+                || viewportRange!.contains(textLocation)
+                || viewportRange!.endLocation.compare(textLocation) == .orderedSame
+            {
+                drawBackgroundHighlight(within: rectWithinBounds,
+                                        forLineContaining: textLocation,
+                                        withColour: codeView?.theme.currentLineColour ?? .systemBackground)
+            }
+        }
     }
-  }
 }
 
 
@@ -71,248 +71,327 @@ class MinimapView: UITextView {
 /// Customised text view for the minimap.
 ///
 class MinimapView: NSTextView {
-  weak var codeView: CodeView?
-
-  // Highlight the current line.
-  //
-  override func drawBackground(in rect: NSRect) {
-    let rectWithinBounds = rect.intersection(bounds)
-    super.drawBackground(in: rectWithinBounds)
-
-    guard let textLayoutManager  = textLayoutManager,
-          let textContentStorage = textContentStorage
-    else { return }
-
-    let viewportRange = textLayoutManager.textViewportLayoutController.viewportRange
-
-    // If the selection is an insertion point, highlight the corresponding line
-    if let location     = insertionPoint,
-       let textLocation = textContentStorage.textLocation(for: location)
-    {
-      if viewportRange == nil
-          || viewportRange!.contains(textLocation)
-          || viewportRange!.endLocation.compare(textLocation) == .orderedSame
-      {
-        drawBackgroundHighlight(within: rectWithinBounds,
-                                forLineContaining: textLocation,
-                                withColour: codeView?.theme.currentLineColour ?? .textBackgroundColor)
-      }
+    weak var codeView: CodeView?
+    
+    // Highlight the current line.
+    //
+    override func drawBackground(in rect: NSRect) {
+        let rectWithinBounds = rect.intersection(bounds)
+        super.drawBackground(in: rectWithinBounds)
+        
+        guard let textLayoutManager  = textLayoutManager,
+              let textContentStorage = textContentStorage
+        else { return }
+        
+        let viewportRange = textLayoutManager.textViewportLayoutController.viewportRange
+        
+        // If the selection is an insertion point, highlight the corresponding line
+        if let location     = insertionPoint,
+           let textLocation = textContentStorage.textLocation(for: location)
+        {
+            if viewportRange == nil
+                || viewportRange!.contains(textLocation)
+                || viewportRange!.endLocation.compare(textLocation) == .orderedSame
+            {
+                drawBackgroundHighlight(within: rectWithinBounds,
+                                        forLineContaining: textLocation,
+                                        withColour: codeView?.theme.currentLineColour ?? .textBackgroundColor)
+            }
+        }
     }
-  }
 }
 
 #endif
 
 
 // MARK: -
-// MARK: Minimap layout functionality 
+// MARK: Minimap layout functionality
 
 class MinimapLineFragment: NSTextLineFragment {
-
-  /// Text line fragment that we base our derived fragment on.
-  ///
-  /// `NSTextLineFragment` is a class cluster; hence, we need to embded a fragment generated by TextKit for us to get
-  /// at its properties.
-  ///
-  private let textLineFragment: NSTextLineFragment
-  
-  /// All rendering attribute runs applying to this line.
-  ///
-  private let attributes: [MinimapLayoutFragment.AttributeRun]
-
-  /// The advacement per glyph (for a monospaced font).
-  ///
-  private let advancement: CGFloat
-
-  init(_ textLineFragment: NSTextLineFragment, attributes: [MinimapLayoutFragment.AttributeRun]) {
-    self.textLineFragment = textLineFragment
-    self.attributes       = attributes
-
-    let attributedString = textLineFragment.attributedString,
-        range            = textLineFragment.characterRange
-
-    // Determine the advancement per glyph (assuming a monospaced font), scaling it down for the minimap.
-    let font = if range.length > 0,
-                  let font = attributedString.attribute(.font, at: range.location, effectiveRange: nil) as? OSFont { font }
-               else { OSFont.monospacedSystemFont(ofSize: OSFont.systemFontSize, weight: .regular) }
-    advancement = font.maximumHorizontalAdvancement / minimapRatio
-
-    super.init(attributedString: attributedString, range: range)
-  }
-
-  @available(*, unavailable)
-  required init?(coder aDecoder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-
-  override var glyphOrigin: CGPoint { CGPoint(x: textLineFragment.glyphOrigin.x / minimapRatio,
-                                              y: textLineFragment.glyphOrigin.y / minimapRatio) }
-
-  override var typographicBounds: CGRect {
-    CGRect(x: textLineFragment.typographicBounds.minX / minimapRatio,
-           y: textLineFragment.typographicBounds.minY / minimapRatio,
-           width: textLineFragment.typographicBounds.width / minimapRatio,
-           height: textLineFragment.typographicBounds.height / minimapRatio)
-  }
-
-  override func characterIndex(for point: CGPoint) -> Int {
-    textLineFragment.characterIndex(for: CGPoint(x: point.x * minimapRatio, y: point.y * minimapRatio))
-  }
-
-  override func fractionOfDistanceThroughGlyph(for point: CGPoint) -> CGFloat {
-    textLineFragment.fractionOfDistanceThroughGlyph(for: point)
-  }
-
-  override func locationForCharacter(at index: Int) -> CGPoint {
-    let point = textLineFragment.locationForCharacter(at: index)
-    return CGPoint(x: point.x / minimapRatio, y: point.y / minimapRatio)
-  }
-
-  // Draw boxes using a character's foreground colour instead of actual glyphs.
-  override func draw(at point: CGPoint, in context: CGContext) {
-
-    // Leave some space between glyph boxes on adjacent lines
-    let gap = typographicBounds.height * 0.3
-
-    for attribute in attributes {
-
-      let attributeRect = CGRect(x: floor(point.x + advancement * CGFloat(attribute.range.location)),
-                                 y: floor(point.y + gap / 2),
-                                 width: floor(advancement * CGFloat(attribute.range.length)),
-                                 height: typographicBounds.height - gap)
-      if let colour = attribute.attributes[.foregroundColor] as? OSColor {
-        colour.withAlphaComponent(0.50).setFill()
-      }
-      OSBezierPath(rect: attributeRect).fill()
+    
+    /// Text line fragment that we base our derived fragment on.
+    ///
+    /// `NSTextLineFragment` is a class cluster; hence, we need to embded a fragment generated by TextKit for us to get
+    /// at its properties.
+    ///
+    private let textLineFragment: NSTextLineFragment
+    
+    /// All rendering attribute runs applying to this line.
+    ///
+    private let attributes: [MinimapLayoutFragment.AttributeRun]
+    
+    /// The advacement per glyph (for a monospaced font).
+    ///
+    private let advancement: CGFloat
+    
+    init(_ textLineFragment: NSTextLineFragment, attributes: [MinimapLayoutFragment.AttributeRun]) {
+        self.textLineFragment = textLineFragment
+        self.attributes       = attributes
+        
+        let attributedString = textLineFragment.attributedString,
+            range            = textLineFragment.characterRange
+        
+        // Determine the advancement per glyph (assuming a monospaced font), scaling it down for the minimap.
+        let font = if range.length > 0,
+            let font = attributedString.attribute(.font, at: range.location, effectiveRange: nil) as? OSFont { font }
+        else { OSFont.monospacedSystemFont(ofSize: OSFont.systemFontSize, weight: .regular) }
+        advancement = font.maximumHorizontalAdvancement / minimapRatio
+        
+        super.init(attributedString: attributedString, range: range)
     }
-  }
+    
+    @available(*, unavailable)
+    required init?(coder aDecoder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    
+    override var glyphOrigin: CGPoint { CGPoint(x: textLineFragment.glyphOrigin.x / minimapRatio,
+                                                y: textLineFragment.glyphOrigin.y / minimapRatio) }
+    
+    override var typographicBounds: CGRect {
+        CGRect(x: textLineFragment.typographicBounds.minX / minimapRatio,
+               y: textLineFragment.typographicBounds.minY / minimapRatio,
+               width: textLineFragment.typographicBounds.width / minimapRatio,
+               height: textLineFragment.typographicBounds.height / minimapRatio)
+    }
+    
+    override func characterIndex(for point: CGPoint) -> Int {
+        textLineFragment.characterIndex(for: CGPoint(x: point.x * minimapRatio, y: point.y * minimapRatio))
+    }
+    
+    override func fractionOfDistanceThroughGlyph(for point: CGPoint) -> CGFloat {
+        textLineFragment.fractionOfDistanceThroughGlyph(for: point)
+    }
+    
+    override func locationForCharacter(at index: Int) -> CGPoint {
+        let point = textLineFragment.locationForCharacter(at: index)
+        return CGPoint(x: point.x / minimapRatio, y: point.y / minimapRatio)
+    }
+    
+    // Draw boxes using a character's foreground colour instead of actual glyphs.
+    override func draw(at point: CGPoint, in context: CGContext) {
+        
+        // Leave some space between glyph boxes on adjacent lines
+        let gap = typographicBounds.height * 0.3
+        
+        for attribute in attributes {
+            
+            let attributeRect = CGRect(x: floor(point.x + advancement * CGFloat(attribute.range.location)),
+                                       y: floor(point.y + gap / 2),
+                                       width: floor(advancement * CGFloat(attribute.range.length)),
+                                       height: typographicBounds.height - gap)
+            if let colour = attribute.attributes[.foregroundColor] as? OSColor {
+                colour.withAlphaComponent(0.50).setFill()
+            }
+            OSBezierPath(rect: attributeRect).fill()
+        }
+    }
 }
 
 /// Minimap layout fragments replaces all line fragments by a our own variant of minimap line fragments, which draw
 /// coloured boxes instead of actual glyphs.
 ///
 class MinimapLayoutFragment: NSTextLayoutFragment {
-
-  private var _textLineFragments: [NSTextLineFragment] = []
-
-  private var observation: NSKeyValueObservation?
-
-  override var layoutFragmentFrame: CGRect {
-    CGRect(x: super.layoutFragmentFrame.minX,
-           y: super.layoutFragmentFrame.minY,
-           width: super.layoutFragmentFrame.width / minimapRatio,
-           height: super.layoutFragmentFrame.height / minimapRatio)
-  }
-
-  // NB: We don't override `renderingSurfaceBounds` as that is calculated on the basis of `layoutFragmentFrame`.
-
-  @objc override dynamic var textLineFragments: [NSTextLineFragment] {
-    return _textLineFragments
-  }
-
-  override init(textElement: NSTextElement, range rangeInElement: NSTextRange?) {
-    super.init(textElement: textElement, range: rangeInElement)
-    observation = super.observe(\.textLineFragments, options: [.new]){ [weak self] _, _ in
-
-      // NB: We cannot use `change.newValue` as this seems to pull the value from the subclass property (which we
-      //     want to update here). Instead, we need to directly access `super`. This is, however as per Swift 5.9
-      //     not possible in a closure weakly capturing `self` (which we need to do here to avoid a retain cycle).
-      //     Hence, we defer to an auxilliary method.
-      self?.updateTextLineFragments()
+    
+    private var _textLineFragments: [NSTextLineFragment] = []
+    
+    private var observation: NSKeyValueObservation?
+    
+    override var layoutFragmentFrame: CGRect {
+        CGRect(x: super.layoutFragmentFrame.minX,
+               y: super.layoutFragmentFrame.minY,
+               width: super.layoutFragmentFrame.width / minimapRatio,
+               height: super.layoutFragmentFrame.height / minimapRatio)
     }
-  }
-  
-  typealias AttributeRun = (attributes: [NSAttributedString.Key : Any], range: NSRange)
-
-  // We don't draw white space and control characters
-  private let      invisibleCharacterers       = CharacterSet.whitespacesAndNewlines.union(CharacterSet.controlCharacters)
-  private lazy var invertedInvisibleCharacters = invisibleCharacterers.inverted
-
-  /// Update the text line fragments from the corresponding property of `super`.
-  ///
-  private func updateTextLineFragments() {
-    if let textLayoutManager = self.textLayoutManager {
-
-      var location       = rangeInElement.location
-      _textLineFragments = []
-      for fragment in super.textLineFragments {
-        guard let string = (fragment.attributedString.string[fragment.characterRange].flatMap{ String($0) }) 
-        else { break }
-
-        let attributeRuns
-          = if let endLocation = textLayoutManager.location(location, offsetBy: fragment.characterRange.length),
-               let textRange   = NSTextRange(location: location, end: endLocation)
-          {
-
-            textLayoutManager.renderingAttributes(in: textRange).map { attributeRun in
-              (attributes: attributeRun.attributes,
-               range: NSRange(location: textLayoutManager.offset(from: location, to: attributeRun.textRange.location),
-                              length: textLayoutManager.offset(from: attributeRun.textRange.location, to: attributeRun.textRange.endLocation)))
-            }
-          } else { [AttributeRun]() }
-
-        var attributeRunsWithoutWhitespace: [AttributeRun] = []
-        for (attributes, range) in attributeRuns {
-
-          if attributes[.hideInvisibles] == nil {
-            attributeRunsWithoutWhitespace.append((attributes: attributes, range: range))
-          } else {
-
-            var remainingRange = range
-            while remainingRange.length > 0,
-                  let match = string.rangeOfCharacter(from: invisibleCharacterers, range: remainingRange.range(in: string))
-            {
-
-              let lower = match.lowerBound.utf16Offset(in: string),
-                  upper = min(match.upperBound.utf16Offset(in: string), remainingRange.max)
-
-              // If we have got a prefix with visible characters, emit an attribute run covering those.
-              if lower > remainingRange.location {
-                attributeRunsWithoutWhitespace.append((attributes: attributes,
-                                                       range: NSRange(location: remainingRange.location,
-                                                                      length: lower - remainingRange.location)))
-              }
-
-              // Advance the remaining range to after the character found in `match`.
-              remainingRange = NSRange(location: upper,
-                                       length: remainingRange.length - (upper - remainingRange.location))
-
-              if let nextVisibleCharacter = string.rangeOfCharacter(from: invertedInvisibleCharacters,
-                                                                    range: remainingRange.range(in: string))
-              {
-
-                // If there is another visible character, the new remaining range starts with that character.
-                let lower = nextVisibleCharacter.lowerBound.utf16Offset(in: string)
-                remainingRange = NSRange(location: lower,
-                                         length: remainingRange.length - (lower - remainingRange.location))
-
-              } else {  // If there are no more visible characters, we are done.
-                remainingRange.length = 0
-              }
-            }
-          }
+    
+    // NB: We don't override `renderingSurfaceBounds` as that is calculated on the basis of `layoutFragmentFrame`.
+    
+    @objc override dynamic var textLineFragments: [NSTextLineFragment] {
+        return _textLineFragments
+    }
+    
+    override init(textElement: NSTextElement, range rangeInElement: NSTextRange?) {
+        super.init(textElement: textElement, range: rangeInElement)
+        observation = super.observe(\.textLineFragments, options: [.new]){ [weak self] _, _ in
+            
+            // NB: We cannot use `change.newValue` as this seems to pull the value from the subclass property (which we
+            //     want to update here). Instead, we need to directly access `super`. This is, however as per Swift 5.9
+            //     not possible in a closure weakly capturing `self` (which we need to do here to avoid a retain cycle).
+            //     Hence, we defer to an auxilliary method.
+            self?.updateTextLineFragments()
         }
-        _textLineFragments.append(MinimapLineFragment(fragment, attributes: attributeRunsWithoutWhitespace))
-        location = textLayoutManager.location(location, offsetBy: fragment.characterRange.length) ?? location
-      }
     }
-  }
-
-  @available(*, unavailable)
-  required init?(coder: NSCoder) {
-    fatalError("init(coder:) has not been implemented")
-  }
+    
+    typealias AttributeRun = (attributes: [NSAttributedString.Key : Any], range: NSRange)
+    
+    // We don't draw white space and control characters
+    private let      invisibleCharacterers       = CharacterSet.whitespacesAndNewlines.union(CharacterSet.controlCharacters)
+    private lazy var invertedInvisibleCharacters = invisibleCharacterers.inverted
+    
+    /// Update the text line fragments from the corresponding property of `super`.
+    ///
+    private func updateTextLineFragments() {
+        if let textLayoutManager = self.textLayoutManager {
+            
+            var location       = rangeInElement.location
+            _textLineFragments = []
+            for fragment in super.textLineFragments {
+                guard let string = (fragment.attributedString.string[fragment.characterRange].flatMap{ String($0) })
+                else { break }
+                
+                let attributeRuns
+                = if let endLocation = textLayoutManager.location(location, offsetBy: fragment.characterRange.length),
+                     let textRange   = NSTextRange(location: location, end: endLocation)
+                {
+                    
+                    textLayoutManager.renderingAttributes(in: textRange).map { attributeRun in
+                        (attributes: attributeRun.attributes,
+                         range: NSRange(location: textLayoutManager.offset(from: location, to: attributeRun.textRange.location),
+                                        length: textLayoutManager.offset(from: attributeRun.textRange.location, to: attributeRun.textRange.endLocation)))
+                    }
+                } else { [AttributeRun]() }
+                
+                var attributeRunsWithoutWhitespace: [AttributeRun] = []
+                for (attributes, range) in attributeRuns {
+                    
+                    if attributes[.hideInvisibles] == nil {
+                        attributeRunsWithoutWhitespace.append((attributes: attributes, range: range))
+                    } else {
+                        
+                        var remainingRange = range
+                        while remainingRange.length > 0,
+                              let match = string.rangeOfCharacter(from: invisibleCharacterers, range: remainingRange.range(in: string))
+                        {
+                            
+                            let lower = match.lowerBound.utf16Offset(in: string),
+                                upper = min(match.upperBound.utf16Offset(in: string), remainingRange.max)
+                            
+                            // If we have got a prefix with visible characters, emit an attribute run covering those.
+                            if lower > remainingRange.location {
+                                attributeRunsWithoutWhitespace.append((attributes: attributes,
+                                                                       range: NSRange(location: remainingRange.location,
+                                                                                      length: lower - remainingRange.location)))
+                            }
+                            
+                            // Advance the remaining range to after the character found in `match`.
+                            remainingRange = NSRange(location: upper,
+                                                     length: remainingRange.length - (upper - remainingRange.location))
+                            
+                            if let nextVisibleCharacter = string.rangeOfCharacter(from: invertedInvisibleCharacters,
+                                                                                  range: remainingRange.range(in: string))
+                            {
+                                
+                                // If there is another visible character, the new remaining range starts with that character.
+                                let lower = nextVisibleCharacter.lowerBound.utf16Offset(in: string)
+                                remainingRange = NSRange(location: lower,
+                                                         length: remainingRange.length - (lower - remainingRange.location))
+                                
+                            } else {  // If there are no more visible characters, we are done.
+                                remainingRange.length = 0
+                            }
+                        }
+                    }
+                }
+                _textLineFragments.append(MinimapLineFragment(fragment, attributes: attributeRunsWithoutWhitespace))
+                location = textLayoutManager.location(location, offsetBy: fragment.characterRange.length) ?? location
+            }
+        }
+    }
+    
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
 }
 
 class MinimapTextLayoutManagerDelegate: NSObject, NSTextLayoutManagerDelegate {
+    
+    // We create instances of our own flavour of layout fragments
+    func textLayoutManager(_ textLayoutManager: NSTextLayoutManager,
+                           textLayoutFragmentFor location: NSTextLocation,
+                           in textElement: NSTextElement)
+    -> NSTextLayoutFragment
+    {
+        guard let paragraph = textElement as? NSTextParagraph
+        else { return NSTextLayoutFragment(textElement: textElement, range: nil)  }
+        
+        return MinimapLayoutFragment(textElement: paragraph, range: nil)
+    }
+}
 
-  // We create instances of our own flavour of layout fragments
-  func textLayoutManager(_ textLayoutManager: NSTextLayoutManager,
-                         textLayoutFragmentFor location: NSTextLocation,
-                         in textElement: NSTextElement)
-  -> NSTextLayoutFragment
-  {
-    guard let paragraph = textElement as? NSTextParagraph
-    else { return NSTextLayoutFragment(textElement: textElement, range: nil)  }
 
-    return MinimapLayoutFragment(textElement: paragraph, range: nil)
-  }
+extension CodeView {
+    func setUpMiniMap(
+        codeStorage: CodeStorage,
+        minimapTextLayoutManagerDelegate: MinimapTextLayoutManagerDelegate,
+        minimapCodeViewDelegate: CodeViewDelegate
+        
+    ) {
+        
+        guard let textContentStorage = textContentStorage else { return }
+        // Create the minimap with its own gutter, but sharing the code storage with the code view
+        //
+        let minimapView        = MinimapView(),
+            minimapGutterView  = GutterView(frame: CGRect.zero,
+                                            textView: minimapView,
+                                            codeStorage: codeStorage,
+                                            theme: theme,
+                                            getMessageViews: { [weak self] in self?.messageViews ?? [:] },
+                                            isMinimapGutter: true),
+            minimapDividerView = NSBox()
+        minimapView.codeView = self
+        
+        minimapDividerView.boxType     = .custom
+        minimapDividerView.fillColor   = .separatorColor
+        minimapDividerView.borderWidth = 0
+        self.minimapDividerView = minimapDividerView
+        // NB: The divider view is floating. We cannot add it now, as we don't have an `enclosingScrollView` yet.
+        
+        // We register the text layout manager of the minimap view as a secondary layout manager of the code view's text
+        // content storage, so that code view and minimap use the same content.
+        minimapView.textLayoutManager?.replace(textContentStorage)
+        textContentStorage.primaryTextLayoutManager = textLayoutManager
+        minimapView.delegate = minimapCodeViewDelegate
+        minimapView.textLayoutManager?.setSafeRenderingAttributesValidator(with:
+                                                                            minimapCodeViewDelegate) { (minimapLayoutManager,
+                                                                                                        layoutFragment) in
+            guard let textContentStorage = minimapLayoutManager.textContentManager as? NSTextContentStorage else { return }
+            codeStorage.setHighlightingAttributes(for: textContentStorage.range(for: layoutFragment.rangeInElement),
+                                                  in: minimapLayoutManager)
+        }.flatMap { observations.append($0) }
+        minimapView.textLayoutManager?.delegate = minimapTextLayoutManagerDelegate
+        
+        let font = theme.font
+        minimapView.font                                = OSFont(name: font.fontName, size: font.pointSize / minimapRatio)!
+        minimapView.backgroundColor                     = backgroundColor
+        minimapView.autoresizingMask                    = .none
+        minimapView.isEditable                          = false
+        minimapView.isSelectable                        = false
+        minimapView.isHorizontallyResizable             = false
+        minimapView.isVerticallyResizable               = true
+        minimapView.textContainerInset                  = .zero
+        minimapView.textContainer?.widthTracksTextView  = false    // we need to be able to control the size (see `tile()`)
+        minimapView.textContainer?.heightTracksTextView = false
+        minimapView.textContainer?.lineBreakMode        = .byWordWrapping
+        self.minimapView = minimapView
+        // NB: The minimap view is floating. We cannot add it now, as we don't have an `enclosingScrollView` yet.
+        
+        minimapView.addSubview(minimapGutterView)
+        self.minimapGutterView = minimapGutterView
+        
+        let documentVisibleBox = NSBox()
+        documentVisibleBox.boxType     = .custom
+        documentVisibleBox.fillColor   = theme.textColour.withAlphaComponent(0.1)
+        documentVisibleBox.borderWidth = 0
+        minimapView.addSubview(documentVisibleBox)
+        self.documentVisibleBox = documentVisibleBox
+        
+        maxSize = CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        
+        
+        // This is needed to redo layout of the minimap once all the views are laid out.
+        // FIXME: Unfortunately, this comes with a visible delay, though.
+        Task { @MainActor in
+            minimapView.textLayoutManager?.invalidateLayout(for: minimapView.textLayoutManager!.documentRange)
+        }
+        
+    }
 }

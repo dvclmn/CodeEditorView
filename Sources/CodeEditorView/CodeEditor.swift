@@ -25,10 +25,6 @@ import TestStrings
 ///
 public struct CodeEditor {
     
-    public enum Mode {
-        case editor
-        case code
-    }
     
     /// Specification of the editor layout.
     ///
@@ -128,15 +124,37 @@ public struct CodeEditor {
         public var capabilities: (() -> Void)?
     }
     
+    /// Specification of a text editing position; i.e., text selection and scroll position.
+    ///
+    public struct Telemetry {
+        
+        public var currentMode: EditorMode
+        public var currentSyntax: String?
+        
+        public init(
+            currentMode: EditorMode = .markdown,
+            currentSyntax: String? = nil
+        ) {
+            self.currentMode = currentMode
+            self.currentSyntax = currentSyntax
+        }
+    }
+    
+    public enum EditorMode {
+        case markdown
+        case code(language: String)
+    }
+    
+    
     let language:            LanguageConfiguration
     let layout:              LayoutConfiguration
-    let mode:                   Mode
     let breakUndoCoalescing: PassthroughSubject<(), Never>?
     let setActions:          ((Actions) -> Void)?
     
     @Binding private var text:     String
     @Binding private var position: Position
     @Binding private var messages: Set<TextLocated<Message>>
+    @Binding var telemetry: Telemetry
     
     /// Creates a fully configured code editor.
     ///
@@ -157,18 +175,19 @@ public struct CodeEditor {
     public init(text:                Binding<String>,
                 position:            Binding<Position>,
                 messages:            Binding<Set<TextLocated<Message>>>,
+                telemetry:           Binding<Telemetry>,
                 language:            LanguageConfiguration = .none,
                 layout:              LayoutConfiguration = .standard,
-                mode: Mode = .editor,
                 breakUndoCoalescing: PassthroughSubject<(), Never>? = nil,
-                setActions:          ((Actions) -> Void)? = nil)
+                setActions:          ((Actions) -> Void)? = nil
+    )
     {
         self._text               = text
         self._position           = position
         self._messages           = messages
+        self._telemetry          = telemetry
         self.language            = language
         self.layout              = layout
-        self.mode               = mode
         self.breakUndoCoalescing = breakUndoCoalescing
         self.setActions          = setActions
     }
@@ -176,8 +195,10 @@ public struct CodeEditor {
     public class _Coordinator {
         @Binding fileprivate var text:     String
         @Binding fileprivate var position: Position
-        
+        @Binding fileprivate var telemetry: CodeEditor.Telemetry
         fileprivate let setActions: ((Actions) -> Void)?
+        
+        
         
         /// In order to avoid update cycles, where view code tries to update SwiftUI state variables (such as the view's
         /// bindings) during a SwiftUI view update, we use `updatingView` as a flag that indicates whether the view is
@@ -193,9 +214,15 @@ public struct CodeEditor {
             }
         }
         
-        init(text: Binding<String>, position: Binding<Position>, setAction: ((Actions) -> Void)?) {
+        init(
+            text: Binding<String>,
+            position: Binding<Position>,
+            telemetry: Binding<CodeEditor.Telemetry>,
+            setAction: ((Actions) -> Void)?
+        ) {
             self._text      = text
             self._position  = position
+            self._telemetry = telemetry
             self.setActions = setAction
         }
     }
@@ -317,8 +344,6 @@ extension CodeEditor: UIViewRepresentable {
 
 extension CodeEditor: NSViewRepresentable {
     
-    
-    
     public func makeNSView(context: Context) -> NSScrollView {
         
         // We pass this function down into `CodeStorageDelegate` to facilitate updates to the `text` binding. For details,
@@ -365,7 +390,7 @@ extension CodeEditor: NSViewRepresentable {
         
         if let delegate = codeView.delegate as? CodeViewDelegate {
             
-            // The property `delegate.textDidChange` is expected to alreayd have been set during initialisation of the
+            // The property `delegate.textDidChange` is expected to already have been set during initialisation of the
             // `CodeView`. Hence, we add to it; instead of just overwriting it.
             let currentTextDidChange = delegate.textDidChange
             delegate.textDidChange = { [currentTextDidChange] textView in
@@ -419,6 +444,8 @@ extension CodeEditor: NSViewRepresentable {
                 coordinator.actions.language.extraActions = actions
             }
         
+        
+        
         return scrollView
     }
     
@@ -436,7 +463,15 @@ extension CodeEditor: NSViewRepresentable {
         
         if codeView.lastMessages != messages { codeView.update(messages: messages) }
         if text != codeView.string { codeView.string = text }  // Hoping for the string comparison fast path...
-        if selections != codeView.selectedRanges { codeView.selectedRanges = selections }
+        
+        if selections != codeView.selectedRanges {
+            codeView.selectedRanges = selections
+        }
+        
+        //        if text.count != codeView.string.count {
+        //            self.telemetry("\(codeView.string.count)")
+        //        }
+        
         if abs(position.verticalScrollPosition - scrollView.verticalScrollPosition) > 0.0001 {
             scrollView.verticalScrollPosition = position.verticalScrollPosition
         }
@@ -447,7 +482,12 @@ extension CodeEditor: NSViewRepresentable {
     }
     
     public func makeCoordinator() -> Coordinator {
-        return Coordinator(text: $text, position: $position, setAction: setActions)
+        return Coordinator(
+            text: $text,
+            position: $position,
+            telemetry: $telemetry,
+            setAction: setActions
+        )
     }
     
     public final class Coordinator: _Coordinator {
@@ -466,7 +506,19 @@ extension CodeEditor: NSViewRepresentable {
             guard !updatingView else { return }
             
             let newValue = textView.selectedRanges.map{ $0.rangeValue }
-            if self.position.selections != newValue { self.position.selections = newValue }
+            if self.position.selections != newValue { self.position.selections = newValue
+            }
+            
+            let tokensInRange: [CodeStorage.LineToken] 
+            
+            tokensInRange = textView.optCodeStorage?.tokens(in: textView.selectedRange()) ?? []
+            
+            
+            
+            let telemTest: String = "\(tokensInRange[0].kind.name)"
+            //            let telemTest = textView.textLayoutManager?.documentRange.debugDescription
+            if self.telemetry.currentSyntax != telemTest { self.telemetry.currentSyntax = telemTest
+            }
         }
         
         func scrollPositionDidChange(_ scrollView: NSScrollView) {
@@ -490,7 +542,7 @@ extension CodeEditor: NSViewRepresentable {
 /// Environment key for the current code editor theme.
 ///
 public struct CodeEditorTheme: EnvironmentKey {
-    public static var defaultValue: Theme = Theme.defaultLight
+    public static var defaultValue: Theme = Theme.defaultDarkMarkdown
 }
 
 extension EnvironmentValues {
@@ -505,6 +557,8 @@ extension EnvironmentValues {
 
 
 // MARK: Positions
+/// Dave: I understand now! This handles the presentation of the position data (cursor location etc),
+/// for the `position` binding
 
 extension CodeEditor.Position: RawRepresentable, Codable {
     
@@ -539,23 +593,48 @@ extension CodeEditor.Position: RawRepresentable, Codable {
 // MARK: -
 // MARK: Previews
 
-struct CodeEditor_Previews: PreviewProvider {
+struct CodeEditorExample: View {
     
+    @State private var text: String = TestStrings.paragraphsWithCode[0]
+    @SceneStorage("editPosition") private var editPosition: CodeEditor.Position = CodeEditor.Position()
     
+    @State private var telemetry: CodeEditor.Telemetry = CodeEditor.Telemetry()
     
-    static var previews: some View {
+    let telemetryHeight: Double = 30
+    
+    var body: some View {
         
-        CodeEditor(
-            text: .constant(TestStrings.Markdown.basicMarkdown),
-            position: .constant(CodeEditor.Position()),
-            messages: .constant(Set()),
-            language: .haskell(),
-            layout: .init(showMinimap: false, wrapText: true)
-        )
-        .environment(
-            \.codeEditorTheme,
-             Theme.defaultDarkNoBackground)
-        .padding()
-        .background(.red.opacity(0.2))
+        VStack {
+            CodeEditor(
+                text: $text,
+                position: $editPosition,
+                messages: .constant(Set()),
+                telemetry: $telemetry,
+                language: .markdown(),
+                layout: .init(showMinimap: false, wrapText: true)
+            )
+            .padding(.top)
+            .padding(.horizontal)
+        }
+        .safeAreaPadding(.bottom, telemetryHeight)
+        .overlay(alignment: .bottom) {
+            HStack {
+                Text(telemetry.currentSyntax ?? "nil")
+                Spacer()
+                Text(editPosition.rawValue)
+            }
+            .frame(height: telemetryHeight)
+            .foregroundStyle(.secondary)
+            .padding(.horizontal)
+            .background(.green.opacity(0.2))
+            
+        }
+        .background(.black.opacity(0.6))
+        .background(.blue.opacity(0.2))
+        
     }
+}
+#Preview {
+    CodeEditorExample()
+        .frame(width: 400, height: 700)
 }
