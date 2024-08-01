@@ -20,40 +20,51 @@ private let logger = Logger(subsystem: "org.justtesting.CodeEditorView", categor
 
 public enum RegexWrapper: RegexComponent {
     
-    //    public var regex: Regex<AnyRegexOutput>
-    
-    
-    //    public typealias RegexOutput = AnyRegexOutput
-    
     case substring(Regex<Substring>)
-    case anyOutput(Regex<AnyRegexOutput>)
-    case markdownPair(Regex<(Substring, Substring)>)
-    case component(any RegexComponent)
-//    case builder(() -> any RegexComponent)
+        case anyOutput(Regex<AnyRegexOutput>)
+        case markdownPair(Regex<(Substring, Substring)>)
+        case component(any RegexComponent)
+        case builder(() -> any RegexComponent)
     
     public var regex: Regex<AnyRegexOutput> {
-        switch self {
-        case .substring(let regex):
-            return regex.map { AnyRegexOutput($0) }
-        case .anyOutput(let regex):
-            return regex
-        case .markdownPair(let regex):
-            return regex.map { AnyRegexOutput(($0.0, $0.1)) }
-        case .component(let component):
-            return component.regex.map { AnyRegexOutput($0) }
-//        case .builder(let builder):
-//            return builder().regex.map { AnyRegexOutput($0) }
+            switch self {
+            case .substring(let regex):
+                return Regex<AnyRegexOutput> {
+                    Regex {
+                        regex
+                    }.transform { AnyRegexOutput($0) }
+                }
+            case .anyOutput(let regex):
+                return regex
+            case .markdownPair(let regex):
+                return Regex<AnyRegexOutput> {
+                    Regex {
+                        regex
+                    }.transform { AnyRegexOutput(($0.0, $0.1)) }
+                }
+            case .component(let component):
+                return Regex<AnyRegexOutput> {
+                    Regex {
+                        component
+                    }.transform { AnyRegexOutput($0) }
+                }
+            case .builder(let builder):
+                return Regex<AnyRegexOutput> {
+                    Regex {
+                        builder()
+                    }.transform { AnyRegexOutput($0) }
+                }
+            }
         }
-    }
     
     
     
     public func match(_ input: String) -> AnyRegexOutput? {
-        if let match = try? self.regex.wholeMatch(in: input) {
-            return match.output
+            if let match = try? self.regex.wholeMatch(in: input) {
+                return match.output
+            }
+            return nil
         }
-        return nil
-    }
 }
 // END regex wrapper
 
@@ -63,7 +74,6 @@ extension RegexWrapper {
         return .builder(builder)
     }
 }
-
 
 public enum EditorMode {
     case markdown
