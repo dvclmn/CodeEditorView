@@ -8,6 +8,12 @@
 import Foundation
 import LanguageSupport
 
+struct CodeBlock: Equatable {
+    var range: NSRange
+    var language: LanguageConfiguration
+}
+
+
 public class CodeBlockManager {
     
     private(set) var codeBlocks: [CodeBlock] = []
@@ -19,12 +25,6 @@ public class CodeBlockManager {
         let newBlock = CodeBlock(range: range, language: language)
         codeBlocks.append(newBlock)
     }
-    
-    //    func updateCodeBlock(at range: NSRange, newLanguage: LanguageConfiguration) {
-    //        if let index = codeBlocks.firstIndex(where: { $0.range.intersection(range) != nil }) {
-    //            codeBlocks[index].language = newLanguage
-    //        }
-    //    }
     
     func updateCodeBlock(at range: NSRange, newLanguage: LanguageConfiguration) {
         if let index = codeBlocks.firstIndex(where: { $0.range.intersection(range) != nil }) {
@@ -45,9 +45,14 @@ public class CodeBlockManager {
         codeBlocks.first { $0.range.intersection(range) != nil }?.language
     }
     
-    func languageAndRangeContaining(location: Int) -> (range: NSRange, language: LanguageConfiguration)? {
-        return codeBlocks.first { $0.range.contains(location) }
-            .map { (range: $0.range, language: $0.language) }
+    func languageAndRangeContaining(location: Int) -> (range: NSRange, language: LanguageConfiguration) {
+        if let block = codeBlocks.first(where: { $0.range.contains(location) }) {
+            return (range: block.range, language: block.language)
+        } else {
+            // If no specific block is found, return the entire document range and the default language
+            let documentRange = NSRange(location: 0, length: NSMaxRange(codeBlocks.last?.range ?? NSRange()))
+            return (range: documentRange, language: .none)
+        }
     }
     
     func checkForLanguageChanges(onChange: (NSRange, LanguageConfiguration) -> Void) {

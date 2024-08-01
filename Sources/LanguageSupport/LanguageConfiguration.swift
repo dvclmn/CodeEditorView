@@ -26,7 +26,7 @@ import AppKit
 private let logger = Logger(subsystem: "org.justtesting.CodeEditorView", category: "LanguageConfiguration")
 
 
-public struct CodeLanguage: Hashable {
+public struct CodeLanguage: Equatable, Hashable {
     let identifier: String
     
     static let swift = CodeLanguage(identifier: "swift")
@@ -39,9 +39,9 @@ public struct CodeLanguage: Hashable {
 
 /// Specifies the language-dependent aspects of a code editor.
 ///
-public struct LanguageConfiguration: Hashable {
+public struct LanguageConfiguration: Equatable, Hashable {
     
-    public enum MarkdownSyntax: Equatable {
+    public enum MarkdownSyntax: Equatable, Hashable {
         case bold
         case italic
         case inlineCode
@@ -76,7 +76,7 @@ public struct LanguageConfiguration: Hashable {
     
     /// The various categories of types.
     ///
-    public enum TypeFlavour: Equatable {
+    public enum TypeFlavour: Equatable, Hashable {
         case `class`
         case `struct`
         case `enum`
@@ -87,7 +87,7 @@ public struct LanguageConfiguration: Hashable {
     
     /// Flavours of identifiers and operators.
     ///
-    public enum Flavour: Equatable {
+    public enum Flavour: Equatable, Hashable {
         case module
         case `type`(TypeFlavour)
         case parameter
@@ -110,7 +110,7 @@ public struct LanguageConfiguration: Hashable {
     
     /// Supported kinds of tokens.
     ///
-    public enum Token: Equatable {
+    public enum Token: Equatable, Hashable {
         case roundBracketOpen
         case roundBracketClose
         case squareBracketOpen
@@ -194,12 +194,12 @@ public struct LanguageConfiguration: Hashable {
         case tokenisingMarkdown
         case tokenisingCode(CodeState)
         
-        public enum CodeState {
+        public enum CodeState: Equatable, Hashable {
             case code(language: CodeLanguage)
             case comment(language: CodeLanguage, depth: Int)
         }
         
-        public enum Tag: Hashable {
+        public enum Tag: Equatable, Hashable {
                 case markdown
                 case code
                 case comment
@@ -517,22 +517,56 @@ extension LanguageConfiguration {
         return (token: token, transition: nil)
     }
     
+    
     func incNestedComment(state: LanguageConfiguration.State) -> LanguageConfiguration.State {
         switch state {
-        case .tokenisingCode:           return .tokenisingComment(1)
-        case .tokenisingComment(let n): return .tokenisingComment(n + 1)
+        case .tokenisingMarkdown:
+            return .tokenisingMarkdown // or handle this case as needed
+        case .tokenisingCode(let codeState):
+            switch codeState {
+            case .code(let language):
+                return .tokenisingCode(.comment(language: language, depth: 1))
+            case .comment(let language, let depth):
+                return .tokenisingCode(.comment(language: language, depth: depth + 1))
+            }
         }
     }
-    
+
     func decNestedComment(state: LanguageConfiguration.State) -> LanguageConfiguration.State {
         switch state {
-        case .tokenisingCode:          return .tokenisingCode
-        case .tokenisingComment(let n)
-            where n > 1:             return .tokenisingComment(n - 1)
-        case .tokenisingComment(_):    return .tokenisingCode
+        case .tokenisingMarkdown:
+            return .tokenisingMarkdown // or handle this case as needed
+        case .tokenisingCode(let codeState):
+            switch codeState {
+            case .code(let language):
+                return .tokenisingCode(.code(language: language))
+            case .comment(let language, let depth):
+                if depth > 1 {
+                    return .tokenisingCode(.comment(language: language, depth: depth - 1))
+                } else {
+                    return .tokenisingCode(.code(language: language))
+                }
+            }
         }
     }
     
+//    
+//    func incNestedComment(state: LanguageConfiguration.State) -> LanguageConfiguration.State {
+//        switch state {
+//        case .tokenisingCode:           return .tokenisingComment(1)
+//        case .tokenisingComment(let n): return .tokenisingComment(n + 1)
+//        }
+//    }
+//    
+//    func decNestedComment(state: LanguageConfiguration.State) -> LanguageConfiguration.State {
+//        switch state {
+//        case .tokenisingCode:          return .tokenisingCode
+//        case .tokenisingComment(let n)
+//            where n > 1:             return .tokenisingComment(n - 1)
+//        case .tokenisingComment(_):    return .tokenisingCode
+//        }
+//    }
+//    
     public var tokenDictionary: TokenDictionary {
         
         
@@ -547,20 +581,46 @@ extension LanguageConfiguration {
         let codeBlockStart = TokenDescription(
             regex: /```(\w+)?/,
             action: (token: .codeBlockDelimiter, transition: { state in
-                var newState = state
-                newState.context = .code(language: $1 ?? "")
-                return newState
+                switch state {
+                case .tokenisingMarkdown:
+                    return .tokenisingCode(.code(language: CodeLanguage(name: $1 ?? "default")))
+                case .tokenisingCode:
+                    return state // or handle this case as needed
+                }
             })
         )
-        
+
         let codeBlockEnd = TokenDescription(
             regex: /```/,
             action: (token: .codeBlockDelimiter, transition: { state in
-                var newState = state
-                newState.context = .markdown
-                return newState
+                switch state {
+                case .tokenisingCode:
+                    return .tokenisingMarkdown
+                case .tokenisingMarkdown:
+                    return state // or handle this case as needed
+                }
             })
         )
+
+        
+//        
+//        let codeBlockStart = TokenDescription(
+//            regex: /```(\w+)?/,
+//            action: (token: .codeBlockDelimiter, transition: { state in
+//                var newState = state
+//                newState.context = .code(language: $1 ?? "")
+//                return newState
+//            })
+//        )
+//        
+//        let codeBlockEnd = TokenDescription(
+//            regex: /```/,
+//            action: (token: .codeBlockDelimiter, transition: { state in
+//                var newState = state
+//                newState.context = .markdown
+//                return newState
+//            })
+//        )
         
         
         if isMarkdown {

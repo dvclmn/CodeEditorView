@@ -18,7 +18,7 @@ import Rearrange
 
 private let logger = Logger(subsystem: "org.justtesting.CodeEditorView", category: "Tokeniser")
 
-public enum RegexWrapper: RegexComponent {
+public enum RegexWrapper: RegexComponent, Equatable, Hashable {
     
     public typealias RegexOutput = AnyRegexOutput
     
@@ -58,7 +58,7 @@ extension RegexWrapper {
 
 
 
-public enum EditorMode: Hashable {
+public enum EditorMode: Equatable, Hashable {
     case markdown
     case code(language: CodeLanguage)
 }
@@ -113,7 +113,8 @@ public struct TokenDescription<TokenType, StateType> {
         regex: Regex<Substring>,
         singleLexeme: String? = nil,
         action: TokenAction<TokenType, StateType>
-    ) {Tokeniser
+    ) {
+
         self.regex = .substring(regex)
         self.singleLexeme = singleLexeme
         self.action = action
@@ -141,7 +142,7 @@ public struct TokenDescription<TokenType, StateType> {
     
 }
 
-public protocol TokeniserState {
+public protocol TokeniserState: Equatable, Hashable {
     
     /// Finite projection of tokeniser state to determine sub-tokenisers (and hence, the regular expression to use)
     ///

@@ -128,8 +128,7 @@ class CodeStorageDelegate: NSObject, NSTextStorageDelegate {
     private var tokenisers: [LanguageConfiguration: LanguageConfiguration.Tokeniser] = [:]
     weak var codeBlockManager: CodeBlockManager?
     
-    //  private(set) var language:  LanguageConfiguration
-    private      var tokeniser: LanguageConfiguration.Tokeniser?  // cache the tokeniser
+    private var tokeniser: LanguageConfiguration.Tokeniser?  // cache the tokeniser
     
     /// Language service for this document if available.
     ///
@@ -407,33 +406,7 @@ extension CodeStorageDelegate {
     
     // MARK: Tokenization
     
-    //       func tokenise(range: NSRange, in codeStorage: CodeStorage) {
-    //           guard let codeBlockManager = codeBlockManager else { return }
-    //
-    //           var currentLocation = range.location
-    //           let endLocation = NSMaxRange(range)
-    //
-    //           while currentLocation < endLocation {
-    //               let remainingRange = NSRange(location: currentLocation, length: endLocation - currentLocation)
-    //
-    //               if let (blockRange, language) = codeBlockManager.languageAndRangeContaining(location: currentLocation) {
-    //                   let intersectionRange = NSIntersectionRange(blockRange, remainingRange)
-    //
-    //                   if let tokeniser = tokenisers[language] {
-    //                       tokeniser.tokenise(string: codeStorage.string, range: intersectionRange) { token, range in
-    //                           // Apply token attributes to the code storage
-    //                           // This part depends on how you're handling token attributes
-    //                       }
-    //                   }
-    //
-    //                   currentLocation = NSMaxRange(intersectionRange)
-    //               } else {
-    //                   // Handle text outside of any code block (e.g., use a default language or skip tokenization)
-    //                   currentLocation = endLocation
-    //               }
-    //           }
-    //       }
-    
+
     func tokenise(range originalRange: NSRange, in textStorage: NSTextStorage) -> (affectedRange: NSRange, lines: Int) {
         
         // NB: The range property of the tokens is in terms of the entire text (not just `line`).
@@ -473,6 +446,7 @@ extension CodeStorageDelegate {
                                                 curlyBracketDiff: 0,
                                                 tokens: localisedTokens,
                                                 commentRanges: [])
+                
             tokenLoop: for token in localisedTokens {
                 
                 switch token.token {
@@ -550,20 +524,27 @@ extension CodeStorageDelegate {
         // Determine the comment depth as determined by the preceeeding code. This is needed to determine the correct
         // tokeniser and to compute attribute information from the resulting tokens. NB: We need to get that info from
         // the previous line, because the line info of the current line was set to `nil` during updating the line map.
+        
+        
+        
+        let (_, language) = codeBlockManager?.languageAndRangeContaining(location: range.location)
+        
+        
         let initialCommentDepth = lineMap.lookup(line: lines.startIndex - 1)?.info?.commentDepthEnd ?? 0
         
-        let initialTokeniserState: LanguageConfiguration.State
-        = initialCommentDepth > 0
-        ? .tokenisingCode(.comment(language: LanguageConfiguration.none, depth: initialCommentDepth))
-        : .tokenisingCode(.code(language: language.defaultLanguage))
+        let initialTokeniserState: LanguageConfiguration.State = initialCommentDepth > 0
+        ? .tokenisingCode(.comment(language: language, depth: initialCommentDepth))
+        : .tokenisingCode(.code(language: language))
+        
+        
         
         
         // Set the token attribute in range.
-        let initialTokeniserState: LanguageConfiguration.State = initialCommentDepth > 0 ? .tokenisingComment(initialCommentDepth) : .tokenisingCode,
-            tokens = textStorage
+        //        let initialTokeniserState: LanguageConfiguration.State = initialCommentDepth > 0 ? .tokenisingComment(initialCommentDepth) : .tokenisingCode,
+        let tokens = textStorage
             .string[stringRange]
             .tokenise(with: tokeniser, state: initialTokeniserState)
-            .map{ $0.shifted(by: range.location) }       // adjust tokens to be relative to the whole `string`
+            .map{ $0.shifted(by: range.location) } // adjust tokens to be relative to the whole `string`
         
         // For all lines in range, collect the tokens line by line, while keeping track of nested comments
         //
@@ -622,7 +603,7 @@ extension CodeStorageDelegate {
         currentLine += 1
     }
         
-        requestSemanticTokens(for: lines, in: textStorage)
+        //        requestSemanticTokens(for: lines, in: textStorage)
         
         if visualDebugging {
             textStorage.addAttribute(.backgroundColor, value: visualDebuggingTrailingColour, range: highlightingRange)
@@ -734,12 +715,16 @@ extension CodeStorageDelegate {
     /// the line map and tokenisation.)
     ///
     func tokenCompletion(for codeStorage: CodeStorage, at index: Int) -> Int {
+        guard let codeBlockManager = codeBlockManager else {
+            return 0 // No completion if we can't determine the language
+        }
+        
+        let (_, language) = codeBlockManager.languageAndRangeContaining(location: index)
         
         /// If the given token is an opening bracket, return the lexeme of its matching closing bracket.
         ///
         func matchingLexemeForOpeningBracket(_ token: LanguageConfiguration.Token) -> String? {
-            if token.isOpenBracket, let matching = token.matchingBracket, let lexeme = language.lexeme(of: matching)
-            {
+            if token.isOpenBracket, let matching = token.matchingBracket, let lexeme = language.lexeme(of: matching) {
                 return lexeme
             } else {
                 return nil
@@ -828,9 +813,9 @@ extension CodeStorageDelegate {
             }
             return completingString?.utf16.count ?? 0
             
-        } else { return 0 }
-    }
-}
+        } else { return 0 } // END previousToken check
+    } // END tokenCompletion
+} // END CodeStorageDelegate extension
 
 
 // MARK: -

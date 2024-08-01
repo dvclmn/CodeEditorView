@@ -24,11 +24,6 @@ import TestStrings
 /// * Text-related values: affect the rendering of message views
 ///
 
-struct CodeBlock: Equatable {
-    var range: NSRange
-    var language: LanguageConfiguration
-}
-
 public struct CodeEditor {
     
     /// Specification of the editor layout.
@@ -132,16 +127,16 @@ public struct CodeEditor {
     
     public struct Telemetry {
         
-        public var currentMode: EditorMode
-        public var currentSyntax: String?
-        
-        public init(
-            currentMode: EditorMode = .markdown,
-            currentSyntax: String? = nil
-        ) {
-            self.currentMode = currentMode
-            self.currentSyntax = currentSyntax
-        }
+//        public var currentMode: EditorMode
+//        public var currentSyntax: String?
+//        
+//        public init(
+//            currentMode: EditorMode = .markdown,
+//            currentSyntax: String? = nil
+//        ) {
+//            self.currentMode = currentMode
+//            self.currentSyntax = currentSyntax
+//        }
     }
     
     
@@ -517,16 +512,16 @@ extension CodeEditor: NSViewRepresentable {
             if self.position.selections != newValue { self.position.selections = newValue
             }
             
-            let tokensInRange: [CodeStorage.LineToken]
+//            let tokensInRange: [CodeStorage.LineToken]
             
-            tokensInRange = textView.optCodeStorage?.tokens(in: textView.selectedRange()) ?? []
+//            tokensInRange = textView.optCodeStorage?.tokens(in: textView.selectedRange()) ?? []
             
             
             
-            let telemTest: String = "\(tokensInRange[0].kind.name)"
+//            let telemTest: String = "\(tokensInRange[0].kind.name)"
             //            let telemTest = textView.textLayoutManager?.documentRange.debugDescription
-            if self.telemetry.currentSyntax != telemTest { self.telemetry.currentSyntax = telemTest
-            }
+//            if self.telemetry.currentSyntax != telemTest { self.telemetry.currentSyntax = telemTest
+//            }
         }
         
         func scrollPositionDidChange(_ scrollView: NSScrollView) {
@@ -623,18 +618,18 @@ struct CodeEditorExample: View {
             .padding(.horizontal)
         }
         .safeAreaPadding(.bottom, telemetryHeight)
-        .overlay(alignment: .bottom) {
-            HStack {
-                Text(telemetry.currentSyntax ?? "nil")
-                Spacer()
-                Text(editPosition.rawValue)
-            }
-            .frame(height: telemetryHeight)
-            .foregroundStyle(.secondary)
-            .padding(.horizontal)
-            .background(.green.opacity(0.2))
-            
-        }
+//        .overlay(alignment: .bottom) {
+//            HStack {
+//                Text(telemetry.currentSyntax ?? "nil")
+//                Spacer()
+//                Text(editPosition.rawValue)
+//            }
+//            .frame(height: telemetryHeight)
+//            .foregroundStyle(.secondary)
+//            .padding(.horizontal)
+//            .background(.green.opacity(0.2))
+//            
+//        }
         .background(.black.opacity(0.6))
         .background(.blue.opacity(0.2))
         

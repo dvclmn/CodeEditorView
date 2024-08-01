@@ -10,10 +10,10 @@ import TestStrings
 
 
 extension CodeEditor {
-    private func updateTelemetry(_ textView: NSTextView) {
-        guard let selectedRange = textView.selectedRanges.first as? NSRange else { return }
+//    private func updateTelemetry(_ textView: NSTextView) {
+//        guard let selectedRange = textView.selectedRanges.first as? NSRange else { return }
         
-    }
+//    }
     
     //    private func determineMode(at position: Int, in textView: NSTextView) -> EditorMode {
     // Logic to determine if we're in Markdown or code mode
