@@ -330,12 +330,13 @@ extension CodeView {
         // Create the minimap with its own gutter, but sharing the code storage with the code view
         //
         let minimapView        = MinimapView(),
-            minimapGutterView  = GutterView(frame: CGRect.zero,
-                                            textView: minimapView,
-                                            codeStorage: codeStorage,
-                                            theme: theme,
-                                            getMessageViews: { [weak self] in self?.messageViews ?? [:] },
-                                            isMinimapGutter: true),
+            minimapGutterView  = GutterView(
+                frame: CGRect.zero,
+                textView: minimapView,
+                codeStorage: codeStorage,
+                theme: theme,
+                isMinimapGutter: true
+            ),
             minimapDividerView = NSBox()
         minimapView.codeView = self
         

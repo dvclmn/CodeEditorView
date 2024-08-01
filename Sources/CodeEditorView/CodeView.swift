@@ -388,31 +388,12 @@ final class CodeView: NSTextView {
             documentVisibleBox?.fillColor        = theme.textColour.withAlphaComponent(0.1)
         }
     }
-    
-    /// The current language configuration.
-    ///
-    /// We keep track of it here to enable us to spot changes during processing of view updates.
-    ///
-    
-    
 
     
     /// The current view layout.
     ///
     @Invalidating(.layout)
     var viewLayout: CodeEditor.LayoutConfiguration = .standard
-    
-    /// Hook to propagate message sets upwards in the view hierarchy.
-    ///
-//    let setMessages: (Set<TextLocated<Message>>) -> Void
-    
-    /// This is the last reported set of `messages`. New message sets can come from the context or from a language server.
-    ///
-    var lastMessages: Set<TextLocated<Message>> = Set()
-    
-    /// Keeps track of the set of message views.
-    ///
-    var messageViews: MessageViews = [:]
     
     /// For the consumption of the diagnostics stream.
     ///
@@ -448,12 +429,10 @@ final class CodeView: NSTextView {
          viewLayout: CodeEditor.LayoutConfiguration,
          theme: Theme,
          setText: @escaping (String) -> Void
-//         setMessages: @escaping (Set<TextLocated<Message>>) -> Void
     )
     {
         self.theme       = theme
         self.viewLayout  = viewLayout
-//        self.setMessages = setMessages
         
         // Use custom components that are gutter-aware and support code-specific editing actions and highlighting.
         let textLayoutManager  = NSTextLayoutManager(),
@@ -523,23 +502,22 @@ final class CodeView: NSTextView {
         // Create the main gutter view
         /// Dave edit
 //        if !language.isMarkdown {
-            let gutterView = GutterView(frame: CGRect.zero,
-                                        textView: self,
-                                        codeStorage: codeStorage,
-                                        theme: theme,
-                                        getMessageViews: { [weak self] in self?.messageViews ?? [:] },
-                                        isMinimapGutter: false)
-            gutterView.autoresizingMask  = .none
+            let gutterView = GutterView(
+                frame: CGRect.zero,
+                textView: self,
+                codeStorage: codeStorage,
+                theme: theme,
+                isMinimapGutter: false
+            )
+            gutterView.autoresizingMask = .none
             
-            self.gutterView              = gutterView
+            self.gutterView = gutterView
 //        }
         // NB: The gutter view is floating. We cannot add it now, as we don't have an `enclosingScrollView` yet.
         
         let currentLineHighlightView = CodeBackgroundHighlightView(color: theme.currentLineColour)
         addBackgroundSubview(currentLineHighlightView)
         self.currentLineHighlightView = currentLineHighlightView
-        
-        
         
         self.setUpMiniMap(
             codeStorage: codeStorage,
@@ -559,24 +537,7 @@ final class CodeView: NSTextView {
             //     line numbering.
             self?.gutterView?.needsDisplay = true
         }
-        
-        // We need to check whether we need to look up completions or cancel a running completion process after every text
-        // change. We also need to remove evicted message views.
-        didChangeNotificationObserver
-        = NotificationCenter.default.addObserver(forName: NSText.didChangeNotification, object: self, queue: .main){ [weak self] _ in
-            
-//            self?.considerCompletionFor(range: self!.rangeForUserCompletion)
-            self?.invalidateMessageViews(withIDs: self!.codeStorageDelegate.lastInvalidatedMessageIDs)
-        }
-        
-        /// Dave: Have turned this off for now
-//        Task {
-//            do {
-//                try await startLanguageService()
-//            } catch let error {
-//                logger.trace("Failed to start language service for \(language.name): \(error.localizedDescription)")
-//            }
-//        }
+
     } // END CodeView init
     
     private func setupCodeBlockManager() {
@@ -626,10 +587,11 @@ final class CodeView: NSTextView {
     
     // MARK: Overrides
     
-    override func setSelectedRanges(_ ranges: [NSValue],
-                                    affinity: NSSelectionAffinity,
-                                    stillSelecting stillSelectingFlag: Bool)
-    {
+    override func setSelectedRanges(
+        _ ranges: [NSValue],
+        affinity: NSSelectionAffinity,
+        stillSelecting stillSelectingFlag: Bool
+    ) {
         let oldSelectedRanges = selectedRanges
         super.setSelectedRanges(ranges, affinity: affinity, stillSelecting: stillSelectingFlag)
         
@@ -772,11 +734,7 @@ extension CodeView {
         gutterView?.invalidateGutter(for: newRange)
         minimapGutterView?.invalidateGutter(for: oldRange)
         minimapGutterView?.invalidateGutter(for: newRange)
-        
-        DispatchQueue.main.async { [self] in
-            collapseMessageViews()
-            updateMessageLineHighlights()
-        }
+
     }
     
     func updateCurrentLineHighlight(for location: NSTextLocation) {
@@ -814,37 +772,7 @@ extension CodeView {
             currentLineHighlightView?.frame = highlightRect
         }
     }
-    
-    func updateMessageLineHighlights() {
-        ensureLayout(includingMinimap: false)
-        
-        for messageView in messageViews {
-            
-            if let telescopeCharacterIndex = messageView.value.characterIndexTelescope,
-               !messageView.value.invalidated     // No telesopes for invalidates messages
-            {
-                
-                if let startLocation  = optTextContentStorage?.textLocation(for: messageView.value.characterIndex),
-                   let endLocation    = optTextContentStorage?.textLocation(for: telescopeCharacterIndex),
-                   let textRange      = NSTextRange(location: startLocation, end: endLocation),
-                   let extent         = optTextLayoutManager?.textLayoutFragmentExtent(for: textRange),
-                   let highlightRect  = lineBackgroundRect(y: extent.y, height: extent.height)
-                {
-                    messageView.value.backgroundView.frame = highlightRect
-                }
-                
-            } else {
-                
-                if let textLocation  = optTextContentStorage?.textLocation(for: messageView.value.characterIndex),
-                   let fragmentFrame = optTextLayoutManager?.textLayoutFragment(for: textLocation)?.layoutFragmentFrameWithoutExtraLineFragment,
-                   let highlightRect = lineBackgroundRect(y: fragmentFrame.minY, height: fragmentFrame.height),
-                   messageView.value.backgroundView.frame != highlightRect
-                {
-                    messageView.value.backgroundView.frame = highlightRect
-                }
-            }
-        }
-    }
+
     
     
     // MARK: Tiling
@@ -887,7 +815,6 @@ extension CodeView {
         /// Dave edit
         if let view = gutterView, view.superview == nil {
             
-            
             enclosingScrollView?.addFloatingSubview(view, for: .horizontal)
             view.superview?.clipsToBounds = true
             
@@ -907,15 +834,17 @@ extension CodeView {
         
         /// Dave: Consider implications of non-fixed-width fonts
         ///
-        let theFont                 = font ?? OSFont.systemFont(ofSize: 0),
-            fontWidth               = theFont.maximumHorizontalAdvancement,  // NB: we deal only with fixed width fonts
-            gutterWidthInCharacters = CGFloat(7),
-            /// Dave: Bit hacky for now
-            gutterWidth             = (ceil(fontWidth * gutterWidthInCharacters)),
-//            gutterWidth             = (language.isMarkdown ? .zero : ceil(fontWidth * gutterWidthInCharacters)),
-            minimumHeight           = max(contentSize.height, documentVisibleRect.height),
-            gutterSize              = CGSize(width: gutterWidth, height: minimumHeight),
-            lineFragmentPadding     = CGFloat(5)
+        let theFont                 = font ?? OSFont.systemFont(ofSize: 0)
+        let fontWidth               = theFont.maximumHorizontalAdvancement  // NB: we deal only with fixed width fonts
+        let gutterWidthInCharacters = CGFloat(7)
+        
+        
+        
+        let gutterWidth: CGFloat             = .zero
+//        let gutterWidth             = (ceil(fontWidth * gutterWidthInCharacters))
+        let minimumHeight           = max(contentSize.height, documentVisibleRect.height)
+        let gutterSize              = CGSize(width: gutterWidth, height: minimumHeight)
+        let lineFragmentPadding     = CGFloat(5)
         
         if gutterView?.frame.size != gutterSize { gutterView?.frame = CGRect(origin: .zero, size: gutterSize) }
         
@@ -1008,7 +937,6 @@ extension CodeView {
         if let textLocation = optTextContentStorage?.textLocation(for: selectedRange.location) {
             updateCurrentLineHighlight(for: textLocation)
         }
-        updateMessageLineHighlights()
     }
     
     
@@ -1065,238 +993,7 @@ extension CodeView {
                                           height: minimapVisibleHeight).integral
         if documentVisibleBox?.frame != documentVisibleFrame { documentVisibleBox?.frame = documentVisibleFrame }  // don't update frames in vain
     }
-    
-    
-    // MARK: Message views
-    
-    /// Update the layout of the specified message view if its geometry got invalidated by
-    /// `CodeTextContainer.lineFragmentRect(forProposedRect:at:writingDirection:remaining:)`.
-    ///
-    fileprivate func layoutMessageView(identifiedBy id: UUID) {
-        
-        guard let textLayoutManager  = textLayoutManager,
-              let textContentManager = textLayoutManager.textContentManager as? NSTextContentStorage,
-              let codeContainer      = optTextContainer as? CodeContainer,
-              let messageBundle      = messageViews[id]
-        else { return }
-        
-        if messageBundle.geometry == nil {
-            
-            guard let startLocation         = textContentManager.textLocation(for: messageBundle.characterIndex),
-                  let textLayoutFragment    = textLayoutManager.textLayoutFragment(for: startLocation),
-                  let firstLineFragmentRect = textLayoutFragment.textLineFragments.first?.typographicBounds
-            else { return }
-            
-            // Compute the message view geometry from the text layout information
-            let geometry = MessageView.Geometry(lineWidth: messageBundle.lineFragementRect.width - firstLineFragmentRect.maxX,
-                                                lineHeight: firstLineFragmentRect.height,
-                                                popupWidth:
-                                                    (codeContainer.size.width - MessageView.popupRightSideOffset) * 0.75,
-                                                popupOffset: textLayoutFragment.layoutFragmentFrame.height + 2)
-            messageViews[id]?.geometry = geometry
-            
-            // Configure the view with the new geometry
-            messageBundle.view.geometry = geometry
-            if messageBundle.view.superview == nil {
-                
-                // Add the messages view
-                addSubview(messageBundle.view)
-                let topOffset           = textContainerOrigin.y + messageBundle.lineFragementRect.minY,
-                    topAnchorConstraint = messageBundle.view.topAnchor.constraint(equalTo: self.topAnchor,
-                                                                                  constant: topOffset)
-                let leftOffset            = textContainerOrigin.x + messageBundle.lineFragementRect.maxX,
-                    rightAnchorConstraint = messageBundle.view.rightAnchor.constraint(equalTo: self.leftAnchor,
-                                                                                      constant: leftOffset)
-                messageViews[id]?.topAnchorConstraint   = topAnchorConstraint
-                messageViews[id]?.rightAnchorConstraint = rightAnchorConstraint
-                NSLayoutConstraint.activate([topAnchorConstraint, rightAnchorConstraint])
-                
-                // Also add the corresponding background highlight view, such that it lies on top of the current line highlight.
-                if let currentLineHighlightView {
-                    insertSubview(messageBundle.backgroundView, aboveSubview: currentLineHighlightView)
-                }
-                
-            } else {
-                
-                // Update the messages view constraints
-                let topOffset  = textContainerOrigin.y + messageBundle.lineFragementRect.minY,
-                    leftOffset = textContainerOrigin.x + messageBundle.lineFragementRect.maxX
-                messageViews[id]?.topAnchorConstraint?.constant   = topOffset
-                messageViews[id]?.rightAnchorConstraint?.constant = leftOffset
-                
-            }
-        }
-    }
-    
-    /// Update the whole set of current messages to a new set.
-    ///
-    /// - Parameter messages: The new set of messages.
-    ///
-    func update(messages: Set<TextLocated<Message>>) {
-        
-        // FIXME: Retracting all and then adding them again my be bad with animation of we re-add many of the same.
-        retractMessages()
-        for message in messages { report(message: message) }
-        
-        lastMessages = messages
-    }
-    
-    /// Adds a new message to the set of messages for this code view.
-    ///
-    func report(message: TextLocated<Message>) {
-        guard let messageBundle = codeStorageDelegate.add(message: message) else { return }
-        
-        updateMessageView(for: messageBundle, at: message.location.zeroBasedLine)
-    }
-    
-    /// Removes a given message. If it doesn't exist, do nothing. This function is quite expensive.
-    ///
-    func retract(message: Message) {
-        guard let (messageBundle, line) = codeStorageDelegate.remove(message: message) else { return }
-        
-        updateMessageView(for: messageBundle, at: line)
-    }
-    
-    /// Given a new or updated message bundle, update the corresponding message view appropriately. This includes covering
-    /// the two special cases, where we create a new view or we remove a view for good (as its last message got deleted).
-    ///
-    /// NB: The `line` argument is zero-based.
-    ///
-    private func updateMessageView(for messageBundle: LineInfo.MessageBundle, at line: Int) {
-        guard let charRange = codeStorageDelegate.lineMap.lookup(line: line)?.range else { return }
-        
-        // NB: If the message info with that id has been invalidated, it just gets removed here, and hence, we don't have to
-        //      worry about a mix of invalidated and new messages.
-        removeMessageViews(withIDs: [messageBundle.id])
-        
-        // If we removed the last message of this view, we don't need to create a new version
-        if messageBundle.messages.isEmpty { return }
-        
-        // TODO: CodeEditor needs to be parameterised by message theme
-        let messageTheme = Message.defaultTheme
-        
-#if os(iOS) || os(visionOS)
-        let background  = SwiftUI.Color(backgroundColor!)
-#elseif os(macOS)
-        let background  = SwiftUI.Color(backgroundColor)
-#endif
-        
-        let messageView = StatefulMessageView.HostingView(messages: messageBundle.messages,
-                                                          theme: messageTheme,
-                                                          background: background,
-                                                          geometry: MessageView.Geometry(lineWidth: 100,
-                                                                                         lineHeight: 15,
-                                                                                         popupWidth: 300,
-                                                                                         popupOffset: 16),
-                                                          fontSize: font?.pointSize ?? OSFont.systemFontSize,
-                                                          colourScheme: theme.colourScheme),
-            principalCategory = messagesByCategory(messageBundle.messages)[0].key,
-            colour            = messageTheme(principalCategory).colour,
-            backgroundView    = CodeBackgroundHighlightView(color: colour.withAlphaComponent(0.1)),
-            telescope: Int?   = if messageBundle.messages.count == 1 { messageBundle.messages[0].telescope } else { nil }
-        
-        messageViews[messageBundle.id] = MessageInfo(view: messageView,
-                                                     backgroundView: backgroundView,
-                                                     characterIndex: 0,
-                                                     telescope: telescope,
-                                                     characterIndexTelescope: telescope.map{ _ in 0 },
-                                                     lineFragementRect: .zero,
-                                                     geometry: nil,
-                                                     colour: colour,
-                                                     invalidated: false)
-        
-        // We invalidate the layout of the line where the message belongs as their may be less space for the text now and
-        // because the layout process for the text fills the `lineFragmentRect` property of the above `MessageInfo`.
-        if let textRange = optTextContentStorage?.textRange(for: charRange) {
-            
-            optTextLayoutManager?.invalidateLayout(for: textRange)
-            
-        }
-        updateMessageLineHighlights()
-    }
-    
-    /// Remove the messages associated with a specified range of lines.
-    ///
-    /// - Parameter onLines: The line range where messages are to be removed. If `nil`, all messages on this code view are
-    ///     to be removed.
-    ///
-    func retractMessages(onLines lines: Range<Int>? = nil) {
-        var messageIds: [LineInfo.MessageBundle.ID] = []
-        
-        // Remove all message bundles in the line map and collect their ids for subsequent view removal.
-        for line in lines ?? codeStorageDelegate.lineMap.lines.indices {
-            
-            if let messageBundle = codeStorageDelegate.messages(at: line) {
-                
-                messageIds.append(messageBundle.id)
-                codeStorageDelegate.removeMessages(at: line)
-                
-            }
-            
-        }
-        
-        // Make sure to remove all views that are still around if necessary.
-        if lines == nil { removeMessageViews() } else { removeMessageViews(withIDs: messageIds) }
-    }
-    
-    /// Invalidate the message views with the given ids.
-    ///
-    /// - Parameter ids: The IDs of the message bundles that ought to be invalidated. If `nil`, invalidate all.
-    ///
-    /// IDs that do not have an associated message view cause no harm.
-    ///
-    fileprivate func invalidateMessageViews(withIDs ids: [LineInfo.MessageBundle.ID]? = nil) {
-        
-        for id in ids ?? Array<LineInfo.MessageBundle.ID>(messageViews.keys) {
-            messageViews[id]?.invalidated = true
-            if let info = messageViews[id] {
-                
-                info.backgroundView.color = OSColor.gray.withAlphaComponent(0.1)
-                info.view.invalidated     = true
-                
-            }
-        }
-    }
-    
-    /// Remove the message views with the given ids.
-    ///
-    /// - Parameter ids: The IDs of the message bundles that ought to be removed. If `nil`, remove all.
-    ///
-    /// IDs that do not have an associated message view cause no harm.
-    ///
-    fileprivate func removeMessageViews(withIDs ids: [LineInfo.MessageBundle.ID]? = nil) {
-        
-        for id in ids ?? Array<LineInfo.MessageBundle.ID>(messageViews.keys) {
-            
-            if let info = messageViews[id] {
-                info.view.removeFromSuperview()
-                info.backgroundView.removeFromSuperview()
-            }
-            messageViews.removeValue(forKey: id)
-            
-        }
-    }
-    
-    /// Ensure that all message views are in their collapsed state.
-    ///
-    func collapseMessageViews() {
-        for messageView in messageViews {
-            messageView.value.view.unfolded = false
-        }
-    }
-    
-    // MARK: Events
-    
-    
-//    func process(event: LanguageServiceEvent) {
-//        guard let codeStorage = optCodeStorage else { return }
-//        
-//        switch event {
-//            
-//        case .tokensAvailable(lineRange: let lineRange):
-//            codeStorageDelegate.requestSemanticTokens(for: lineRange, in: codeStorage)
-//        }
-//    }
+
 }
 
 
@@ -1331,33 +1028,7 @@ final class CodeContainer: NSTextContainer {
               characterIndex == oneLine.range.location     // do the following only for the first line fragment of a line
         else { return calculatedRect }
         
-        // On lines that contain messages, we reduce the width of the available line fragement rect such that there is
-        // always space for a minimal truncated message (provided the text container is wide enough to accomodate that).
-        if let messageBundleId = delegate.messages(at: line)?.id,
-           calculatedRect.width > 2 * MessageView.minimumInlineWidth
-        {
-            
-            codeView.messageViews[messageBundleId]?.characterIndex    = characterIndex
-            codeView.messageViews[messageBundleId]?.lineFragementRect = calculatedRect
-            codeView.messageViews[messageBundleId]?.geometry = nil                      // invalidate the geometry
-            
-            // If the bundle has a telescope, determine the telescope character index.
-            
-            if let lines   = codeView.messageViews[messageBundleId]?.telescope,
-               let oneLine = delegate.lineMap.lookup(line: line + lines)
-            {
-                codeView.messageViews[messageBundleId]?.characterIndexTelescope = oneLine.range.max
-            }
-            
-            // To fully determine the layout of the message view, typesetting needs to complete for this line; hence, we defer
-            // configuring the view.
-            DispatchQueue.main.async { codeView.layoutMessageView(identifiedBy: messageBundleId) }
-            
-            return CGRect(origin: calculatedRect.origin,
-                          size: CGSize(width: calculatedRect.width - MessageView.minimumInlineWidth,
-                                       height: calculatedRect.height))
-            
-        } else { return calculatedRect }
+        return calculatedRect
     }
 }
 

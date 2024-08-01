@@ -414,32 +414,10 @@ extension CodeEditor: NSViewRepresentable {
             }
         }
         
-        // Report the initial message set
-        DispatchQueue.main.async{ codeView.update(messages: messages) }
-        
         // Break undo coalescing whenever we get a trigger over the corresponding subject.
         context.coordinator.breakUndoCoalescingCancellable = breakUndoCoalescing?.sink { [weak codeView] _ in
             codeView?.breakUndoCoalescing()
         }
-        
-        
-        
-        // Set the initial actions
-        //
-        // NB: It is important that the actions don't capture the code view strongly.
-        //        context.coordinator.actions = Actions(language: Actions.Language(name: language.name),
-        //                                              info: { [weak codeView] in codeView?.infoAction() },
-        //                                              completions: { [weak codeView] in codeView?.completionAction() },
-        //                                              capabilities: { [weak codeView] in codeView?.capabilitiesAction() })
-        //
-        //        let coordinator = context.coordinator
-        //        context.coordinator.extraActionsCancellable = codeView.optLanguageService?.extraActions
-        //            .receive(on: DispatchQueue.main)
-        //            .sink { [coordinator] actions in
-        //
-        //                coordinator.actions.language.extraActions = actions
-        //            }
-        
         
         
         return scrollView
@@ -459,7 +437,6 @@ extension CodeEditor: NSViewRepresentable {
         let theme      = context.environment.codeEditorTheme,
             selections = position.selections.map{ NSValue(range: $0) }
         
-        if codeView.lastMessages != messages { codeView.update(messages: messages) }
         if text != codeView.string { codeView.string = text }  // Hoping for the string comparison fast path...
         
         if selections != codeView.selectedRanges {
@@ -604,9 +581,7 @@ struct CodeEditorExample: View {
     
     @State private var text: String = TestStrings.paragraphsWithCode[0]
     @SceneStorage("editPosition") private var editPosition: CodeEditor.Position = CodeEditor.Position()
-    
-//    @State private var telemetry: CodeEditor.Telemetry = CodeEditor.Telemetry()
-    
+
     let telemetryHeight: Double = 30
     
     var body: some View {
@@ -615,24 +590,24 @@ struct CodeEditorExample: View {
             CodeEditor(
                 text: $text,
                 position: $editPosition,
-                layout: .init(showMinimap: false, wrapText: true)
+                layout: .init(showMinimap: true, wrapText: true)
             )
-            .padding(.top)
-            .padding(.horizontal)
+            .safeAreaPadding(.top)
+            .safeAreaPadding(.horizontal)
         }
         .safeAreaPadding(.bottom, telemetryHeight)
-//        .overlay(alignment: .bottom) {
-//            HStack {
-//                Text(telemetry.currentSyntax ?? "nil")
-//                Spacer()
-//                Text(editPosition.rawValue)
-//            }
-//            .frame(height: telemetryHeight)
-//            .foregroundStyle(.secondary)
-//            .padding(.horizontal)
-//            .background(.green.opacity(0.2))
-//            
-//        }
+        .overlay(alignment: .bottom) {
+            HStack {
+                Spacer()
+                Text(editPosition.rawValue)
+            }
+            .monospaced()
+            .frame(height: telemetryHeight)
+            .foregroundStyle(.secondary)
+            .padding(.horizontal)
+            .background(.green.opacity(0.2))
+            
+        }
         .background(.black.opacity(0.6))
         .background(.blue.opacity(0.2))
         

@@ -61,10 +61,6 @@ final class GutterView: OSView {
   ///
   var theme: Theme
 
-  /// Accessor for the associated text view's message views.
-  ///
-  let getMessageViews: () -> MessageViews
-
   /// Determines whether this gutter is for a main code view or for the minimap of a code view.
   ///
   let isMinimapGutter: Bool
@@ -76,13 +72,11 @@ final class GutterView: OSView {
        textView: OSTextView,
        codeStorage: CodeStorage,
        theme: Theme,
-       getMessageViews: @escaping () -> MessageViews,
        isMinimapGutter: Bool)
   {
     self.textView        = textView
     self.codeStorage     = codeStorage
     self.theme           = theme
-    self.getMessageViews = getMessageViews
     self.isMinimapGutter = isMinimapGutter
     super.init(frame: frame)
 #if os(iOS) || os(visionOS)
