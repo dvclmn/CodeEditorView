@@ -23,8 +23,13 @@ import TestStrings
 /// * Environment value `codeEditorTheme`: determines the code highlighting theme to use
 /// * Text-related values: affect the rendering of message views
 ///
+
+struct CodeBlock: Equatable {
+    var range: NSRange
+    var language: LanguageConfiguration
+}
+
 public struct CodeEditor {
-    
     
     /// Specification of the editor layout.
     ///
@@ -124,8 +129,7 @@ public struct CodeEditor {
         public var capabilities: (() -> Void)?
     }
     
-    /// Specification of a text editing position; i.e., text selection and scroll position.
-    ///
+
     public struct Telemetry {
         
         public var currentMode: EditorMode
@@ -140,13 +144,10 @@ public struct CodeEditor {
         }
     }
     
-    public enum EditorMode {
-        case markdown
-        case code(language: String)
-    }
     
     
-    let language:            LanguageConfiguration
+    
+//    let language:            LanguageConfiguration
     let layout:              LayoutConfiguration
     let breakUndoCoalescing: PassthroughSubject<(), Never>?
     let setActions:          ((Actions) -> Void)?
@@ -176,7 +177,7 @@ public struct CodeEditor {
                 position:            Binding<Position>,
                 messages:            Binding<Set<TextLocated<Message>>>,
                 telemetry:           Binding<Telemetry>,
-                language:            LanguageConfiguration = .none,
+//                language:            LanguageConfiguration = .none,
                 layout:              LayoutConfiguration = .standard,
                 breakUndoCoalescing: PassthroughSubject<(), Never>? = nil,
                 setActions:          ((Actions) -> Void)? = nil
@@ -186,7 +187,7 @@ public struct CodeEditor {
         self._position           = position
         self._messages           = messages
         self._telemetry          = telemetry
-        self.language            = language
+//        self.language            = language
         self.layout              = layout
         self.breakUndoCoalescing = breakUndoCoalescing
         self.setActions          = setActions
@@ -369,7 +370,6 @@ extension CodeEditor: NSViewRepresentable {
         
         // Set up text view with gutter
         let codeView = CodeView(frame: CGRect(x: 0, y: 0, width: 100, height: 40),
-                                with: language,
                                 viewLayout: layout,
                                 theme: context.environment.codeEditorTheme,
                                 setText: setText(_:),

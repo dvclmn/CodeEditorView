@@ -19,35 +19,6 @@ import LanguageSupport
 private let logger = Logger(subsystem: "org.justtesting.CodeEditorView", category: "CodeView")
 
 
-// MARK: -
-// MARK: Message info
-
-/// Information required to layout message views.
-///
-/// NB: This information is computed incrementally. We get the `lineFragementRect` from the text container during the
-///     line fragment computations. This indicates that the message layout may have to change (if it was already
-///     computed), but at this point, we cannot determine the new geometry yet; hence, `geometry` will be `nil`.
-///     The `geometry` will be determined after text layout is complete. We get the `characterIndex` also from the text
-///     container during line fragment computations.
-///
-struct MessageInfo {
-    let view:                    StatefulMessageView.HostingView
-    let backgroundView:          CodeBackgroundHighlightView
-    var characterIndex:          Int                    // The starting character index for the line hosting the message
-    var telescope:               Int?                   // The number of telescope lines (i.e., beyond starting line)
-    var characterIndexTelescope: Int?                   // The last index of the last line of the telescope lines (if any)
-    var lineFragementRect:       CGRect                 // The *full* line fragement rectangle (incl. message)
-    var geometry:                MessageView.Geometry?
-    var colour:                  OSColor                // The category colour of the most severe category
-    var invalidated:             Bool                   // Greyed out and doesn't display a telescope
-    
-    var topAnchorConstraint:   NSLayoutConstraint?
-    var rightAnchorConstraint: NSLayoutConstraint?
-}
-
-/// Dictionary of message views.
-///
-typealias MessageViews = [LineInfo.MessageBundle.ID: MessageInfo]
 
 
 #if os(iOS) || os(visionOS)
@@ -389,6 +360,10 @@ final class CodeView: NSTextView {
     private var frameChangedNotificationObserver: NSObjectProtocol?
     private var didChangeNotificationObserver:    NSObjectProtocol?
     
+    // Code blocks
+    @Invalidating(.layout, .display)
+    private var codeBlockManager = CodeBlockManager()
+    
     /// Contains the line on which the insertion point was located, the last time the selection range got set (if the
     /// selection was an insertion point at all; i.e., it's length was 0).
     ///
@@ -418,31 +393,9 @@ final class CodeView: NSTextView {
     ///
     /// We keep track of it here to enable us to spot changes during processing of view updates.
     ///
-    @Invalidating(.layout, .display)
-    var language: LanguageConfiguration = .none {
-        didSet {
-            if let codeStorage = optCodeStorage,
-               oldValue != language
-            {
-                Task { @MainActor in
-                    do {
-                        
-                        try await codeStorageDelegate.change(language: language, for: codeStorage)
-                        try await startLanguageService()
-                        
-                    } catch let error {
-                        logger.trace("Failed to change language from \(oldValue.name) to \(self.language.name): \(error.localizedDescription)")
-                    }
-                    
-                    // FIXME: This is an awful kludge to get the code view to redraw with the new highlighting. Emitting
-                    //        `codeStorage.edited(:range:changeInLength)` doesn't seem to work reliably.
-                    Task { @MainActor in
-                        font = theme.font
-                    }
-                }
-            }
-        }
-    }
+    
+    
+
     
     /// The current view layout.
     ///
@@ -492,7 +445,6 @@ final class CodeView: NSTextView {
     /// Designated initialiser for code views with a gutter.
     ///
     init(frame: CGRect,
-         with language: LanguageConfiguration,
          viewLayout: CodeEditor.LayoutConfiguration,
          theme: Theme,
          setText: @escaping (String) -> Void,
@@ -500,7 +452,6 @@ final class CodeView: NSTextView {
     )
     {
         self.theme       = theme
-        self.language    = language
         self.viewLayout  = viewLayout
         self.setMessages = setMessages
         
@@ -513,6 +464,8 @@ final class CodeView: NSTextView {
         textContentStorage.addTextLayoutManager(textLayoutManager)
         textContentStorage.primaryTextLayoutManager = textLayoutManager
         textContentStorage.textStorage              = codeStorage
+        
+        setupCodeBlockManager()
         
         codeStorageDelegate = CodeStorageDelegate(with: language, setText: setText)
         
@@ -613,15 +566,46 @@ final class CodeView: NSTextView {
             self?.invalidateMessageViews(withIDs: self!.codeStorageDelegate.lastInvalidatedMessageIDs)
         }
         
-        Task {
-            do {
-                try await startLanguageService()
-            } catch let error {
-                logger.trace("Failed to start language service for \(language.name): \(error.localizedDescription)")
-            }
-        }
+        /// Dave: Have turned this off for now
+//        Task {
+//            do {
+//                try await startLanguageService()
+//            } catch let error {
+//                logger.trace("Failed to start language service for \(language.name): \(error.localizedDescription)")
+//            }
+//        }
     } // END CodeView init
     
+    private func setupCodeBlockManager() {
+            codeBlockManager.onLanguageChange = { [weak self] range, newLanguage in
+                self?.handleLanguageChange(for: range, to: newLanguage)
+            }
+        }
+    
+    private func handleLanguageChange(for range: NSRange, to newLanguage: LanguageConfiguration) {
+            if let codeStorage = optCodeStorage {
+                Task { @MainActor in
+                    do {
+                        try await codeStorageDelegate.change(language: newLanguage, for: codeStorage, in: range)
+//                        try await startLanguageService(for: range)
+                        
+                        // Invalidate layout and display for the affected range
+                        self.invalidateDisplay(forCharacterRange: range)
+                        self.layoutManager?.invalidateLayout(forCharacterRange: range, actualCharacterRange: nil)
+                        
+                    } catch let error {
+                        logger.trace("Failed to change language to \(newLanguage.name) for range \(range): \(error.localizedDescription)")
+                    }
+                    
+                    // FIXME: This is an awful kludge to get the code view to redraw with the new highlighting. Emitting
+                    //        `codeStorage.edited(:range:changeInLength)` doesn't seem to work reliably.
+                    Task { @MainActor in
+                        self.font = self.theme.font
+                    }
+                }
+            }
+        }
+
     /// Try to activate the language service for the currently configured language.
     ///
     func startLanguageService() async throws {
@@ -691,6 +675,8 @@ final class CodeView: NSTextView {
         gutterView?.needsDisplay        = true
         minimapGutterView?.needsDisplay = true
     }
+    
+    
 }
 
 class CodeViewDelegate: NSObject, NSTextViewDelegate {

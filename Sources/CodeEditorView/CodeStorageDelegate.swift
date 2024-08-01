@@ -124,13 +124,16 @@ struct LineInfo {
 // MARK: Delegate class
 
 class CodeStorageDelegate: NSObject, NSTextStorageDelegate {
+    
+    private var tokenisers: [LanguageConfiguration: LanguageConfiguration.Tokeniser] = [:]
+    private weak var codeBlockManager: CodeBlockManager?
 
-  private(set) var language:  LanguageConfiguration
+//  private(set) var language:  LanguageConfiguration
   private      var tokeniser: LanguageConfiguration.Tokeniser?  // cache the tokeniser
   
   /// Language service for this document if available.
   /// 
-  var languageService: LanguageService? { language.languageService }
+//  var languageService: LanguageService? { language.languageService }
 
   /// Hook to propagate changes to the text store upwards in the view hierarchy.
   ///
@@ -175,35 +178,43 @@ class CodeStorageDelegate: NSObject, NSTextStorageDelegate {
 
 
   // MARK: Initialisers
+    
+    init(codeBlockManager: CodeBlockManager, setText: @escaping (String) -> Void) {
+            self.codeBlockManager = codeBlockManager
+            self.setText = setText
+            super.init()
+        }
 
-  init(with language: LanguageConfiguration, setText: @escaping (String) -> Void) {
-    self.language  = language
-    self.tokeniser = Tokeniser(for: language.tokenDictionary)
-    self.setText   = setText
-    super.init()
-  }
   
-  deinit {
-    Task { [languageService] in
-      try await languageService?.stop()
-    }
-  }
+//  deinit {
+//    Task { [languageService] in
+//      try await languageService?.stop()
+//    }
+//  }
 
 
-  // MARK: Updates
+    // MARK: Updates
 
-  /// Reinitialise the code storage delegate with a new language.
-  ///
-  /// - Parameter language: The new language.
-  ///
-  /// This implies stopping any already running language service first.
-  /// 
-  func change(language: LanguageConfiguration, for codeStorage: CodeStorage) async throws {
-    try await languageService?.stop()
-    self.language  = language
-    self.tokeniser = Tokeniser(for: language.tokenDictionary)
-    let _ = tokenise(range: NSRange(location: 0, length: codeStorage.length), in: codeStorage)
-  }
+        /// Change the language for a specific range in the code storage.
+        ///
+        /// - Parameters:
+        ///   - language: The new language configuration.
+        ///   - codeStorage: The code storage to update.
+        ///   - range: The range to apply the new language to.
+        func change(language: LanguageConfiguration, for codeStorage: CodeStorage, in range: NSRange) async throws {
+            // Update the code block manager with the new language for this range
+            codeBlockManager?.updateCodeBlock(at: range, newLanguage: language)
+
+            // Ensure we have a tokeniser for this language
+            if tokenisers[language] == nil {
+                tokenisers[language] = Tokeniser(for: language.tokenDictionary)
+            }
+
+            // Tokenize the affected range
+            tokenise(range: range, in: codeStorage)
+        }
+    
+    
   
 
   // MARK: Delegate methods
@@ -393,6 +404,36 @@ extension CodeStorageDelegate {
   /// Tokenisation happens at line granularity. Hence, the range is correspondingly extended. Moreover, tokens must not
   /// span across lines as they will always only associated with the line on which they start.
   /// 
+    
+    // MARK: Tokenization
+
+//       func tokenise(range: NSRange, in codeStorage: CodeStorage) {
+//           guard let codeBlockManager = codeBlockManager else { return }
+//
+//           var currentLocation = range.location
+//           let endLocation = NSMaxRange(range)
+//
+//           while currentLocation < endLocation {
+//               let remainingRange = NSRange(location: currentLocation, length: endLocation - currentLocation)
+//               
+//               if let (blockRange, language) = codeBlockManager.languageAndRangeContaining(location: currentLocation) {
+//                   let intersectionRange = NSIntersectionRange(blockRange, remainingRange)
+//                   
+//                   if let tokeniser = tokenisers[language] {
+//                       tokeniser.tokenise(string: codeStorage.string, range: intersectionRange) { token, range in
+//                           // Apply token attributes to the code storage
+//                           // This part depends on how you're handling token attributes
+//                       }
+//                   }
+//                   
+//                   currentLocation = NSMaxRange(intersectionRange)
+//               } else {
+//                   // Handle text outside of any code block (e.g., use a default language or skip tokenization)
+//                   currentLocation = endLocation
+//               }
+//           }
+//       }
+
   func tokenise(range originalRange: NSRange, in textStorage: NSTextStorage) -> (affectedRange: NSRange, lines: Int) {
 
     // NB: The range property of the tokens is in terms of the entire text (not just `line`).
@@ -510,10 +551,15 @@ extension CodeStorageDelegate {
     // tokeniser and to compute attribute information from the resulting tokens. NB: We need to get that info from
     // the previous line, because the line info of the current line was set to `nil` during updating the line map.
     let initialCommentDepth  = lineMap.lookup(line: lines.startIndex - 1)?.info?.commentDepthEnd ?? 0
+      
+      let initialTokeniserState: LanguageConfiguration.State
+          = initialCommentDepth > 0
+      ? .tokenisingCode(.comment(language: LanguageConfiguration.none, depth: initialCommentDepth))
+              : .tokenisingCode(.code(language: language.defaultLanguage))
+
 
     // Set the token attribute in range.
-    let initialTokeniserState: LanguageConfiguration.State
-               = initialCommentDepth > 0 ? .tokenisingComment(initialCommentDepth) : .tokenisingCode,
+    let initialTokeniserState: LanguageConfiguration.State = initialCommentDepth > 0 ? .tokenisingComment(initialCommentDepth) : .tokenisingCode,
         tokens = textStorage
                    .string[stringRange]
                    .tokenise(with: tokeniser, state: initialTokeniserState)

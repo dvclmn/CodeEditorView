@@ -10,6 +10,36 @@ import SwiftUI
 
 import LanguageSupport
 
+// MARK: -
+// MARK: Message info
+
+/// Information required to layout message views.
+///
+/// NB: This information is computed incrementally. We get the `lineFragementRect` from the text container during the
+///     line fragment computations. This indicates that the message layout may have to change (if it was already
+///     computed), but at this point, we cannot determine the new geometry yet; hence, `geometry` will be `nil`.
+///     The `geometry` will be determined after text layout is complete. We get the `characterIndex` also from the text
+///     container during line fragment computations.
+///
+struct MessageInfo {
+    let view:                    StatefulMessageView.HostingView
+    let backgroundView:          CodeBackgroundHighlightView
+    var characterIndex:          Int                    // The starting character index for the line hosting the message
+    var telescope:               Int?                   // The number of telescope lines (i.e., beyond starting line)
+    var characterIndexTelescope: Int?                   // The last index of the last line of the telescope lines (if any)
+    var lineFragementRect:       CGRect                 // The *full* line fragement rectangle (incl. message)
+    var geometry:                MessageView.Geometry?
+    var colour:                  OSColor                // The category colour of the most severe category
+    var invalidated:             Bool                   // Greyed out and doesn't display a telescope
+    
+    var topAnchorConstraint:   NSLayoutConstraint?
+    var rightAnchorConstraint: NSLayoutConstraint?
+}
+
+/// Dictionary of message views.
+///
+typealias MessageViews = [LineInfo.MessageBundle.ID: MessageInfo]
+
 
 // MARK: -
 // MARK: Message category themes

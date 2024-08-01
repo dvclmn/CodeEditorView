@@ -32,7 +32,6 @@ class CodeStorage: NSTextStorage {
 
   var theme: Theme
   
-
   // MARK: Initialisers
 
   init(theme: Theme) {

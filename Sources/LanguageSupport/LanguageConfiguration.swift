@@ -26,14 +26,52 @@ import AppKit
 private let logger = Logger(subsystem: "org.justtesting.CodeEditorView", category: "LanguageConfiguration")
 
 
+public struct CodeLanguage: Hashable {
+    let identifier: String
+    
+    static let swift = CodeLanguage(identifier: "swift")
+    static let python = CodeLanguage(identifier: "python")
+    static let javascript = CodeLanguage(identifier: "javascript")
+    
+    static let unknown = CodeLanguage(identifier: "unknown")
+}
+
+
 /// Specifies the language-dependent aspects of a code editor.
 ///
-public struct LanguageConfiguration {
+public struct LanguageConfiguration: Hashable {
     
     public enum MarkdownSyntax: Equatable {
         case bold
         case italic
         case inlineCode
+        case codeBlock(LanguageConfiguration?)
+        
+        var regex: Regex<(Substring, Substring)> {
+            switch self {
+            case .bold:
+                /\*\*(.*?)\*\*/
+            case .italic:
+                /\*\*(.*?)\*\*/
+            case .inlineCode:
+                /\*\*(.*?)\*\*/
+            case .codeBlock:
+                /(?m)^```([\s\S]*?)^```/
+            }
+        }
+        
+        var syntaxCharacters: String {
+            switch self {
+            case .bold: return "**"
+            case .italic: return "*"
+            case .inlineCode: return "`"
+            case .codeBlock: return "```"
+            }
+        }
+        
+        var syntaxCharacterCount: Int {
+            syntaxCharacters.count
+        }
     }
     
     /// The various categories of types.
@@ -152,19 +190,47 @@ public struct LanguageConfiguration {
     /// Tokeniser state
     ///
     public enum State: TokeniserState {
-        case tokenisingCode
-        case tokenisingComment(Int)   // the argument gives the comment nesting depth > 0
         
-        public enum Tag: Hashable { case tokenisingCode; case tokenisingComment }
+        case tokenisingMarkdown
+        case tokenisingCode(CodeState)
+        
+        public enum CodeState {
+            case code(language: CodeLanguage)
+            case comment(language: CodeLanguage, depth: Int)
+        }
+        
+        public enum Tag: Hashable {
+                case markdown
+                case code
+                case comment
+            }
         
         public typealias StateTag = Tag
+
         
         public var tag: Tag {
-            switch self {
-            case .tokenisingCode:       return .tokenisingCode
-            case .tokenisingComment(_): return .tokenisingComment
+                switch self {
+                case .tokenisingMarkdown:
+                    return .markdown
+                case .tokenisingCode(.code):
+                    return .code
+                case .tokenisingCode(.comment):
+                    return .comment
+                }
             }
-        }
+
+        
+        public var editorMode: EditorMode {
+               switch self {
+               case .tokenisingMarkdown:
+                   return .markdown
+               case .tokenisingCode(.code(let language)):
+                   return .code(language: language)
+               case .tokenisingCode(.comment(let language, _)):
+                   return .code(language: language)
+               }
+           }
+        
     }
     
     /// Lexeme pair for a bracketing construct
@@ -194,15 +260,15 @@ public struct LanguageConfiguration {
     /// So, this is not the place for defining Markdown syntax such as **bold** etc
     /// That will need it's own definition
     ///
-    public let stringRegex: Regex<Substring>?
+    public let stringRegex: RegexWrapper?
     
     /// Regular expression matching character literals
     ///
-    public let characterRegex: Regex<Substring>?
+    public let characterRegex: RegexWrapper?
     
     /// Regular expression matching numbers
     ///
-    public let numberRegex: Regex<Substring>?
+    public let numberRegex: RegexWrapper?
     
     /// Lexeme that introduces a single line comment
     /// Dave: Not used for markdown
@@ -219,11 +285,11 @@ public struct LanguageConfiguration {
     /// such as `var`, `enum`, `class`, `func` etc.
     /// Not used for markdown
     ///
-    public let identifierRegex: Regex<Substring>?
+    public let identifierRegex: RegexWrapper?
     
     /// Regular expression matching all user-definable operators if they are not included in the identifier category.
     ///
-    public let operatorRegex: Regex<Substring>?
+    public let operatorRegex: RegexWrapper?
     
     /// Reserved identifiers (this does not include contextual keywords)
     ///
@@ -238,11 +304,11 @@ public struct LanguageConfiguration {
     public let languageService: LanguageService?
     
     
-//    public let markdownSyntax: MarkdownSyntax?
+    //    public let markdownSyntax: MarkdownSyntax?
     
     public let isMarkdown: Bool
     
-//    public let markdownSyntax: MarkdownSyntax?
+    //    public let markdownSyntax: MarkdownSyntax?
     
     /// Defines a language configuration.
     ///
@@ -250,13 +316,13 @@ public struct LanguageConfiguration {
         name: String,
         supportsSquareBrackets: Bool,
         supportsCurlyBrackets: Bool,
-        stringRegex: Regex<Substring>? = nil,
-        characterRegex: Regex<Substring>? = nil,
-        numberRegex: Regex<Substring>? = nil,
+        stringRegex: RegexWrapper? = nil,
+        characterRegex: RegexWrapper? = nil,
+        numberRegex: RegexWrapper? = nil,
         singleLineComment: String? = nil,
         nestedComment: LanguageConfiguration.BracketPair? = nil,
-        identifierRegex: Regex<Substring>? = nil,
-        operatorRegex: Regex<Substring>? = nil,
+        identifierRegex: RegexWrapper? = nil,
+        operatorRegex: RegexWrapper? = nil,
         reservedIdentifiers: [String] = [],
         reservedOperators: [String] = [],
         languageService: LanguageService? = nil,
@@ -344,7 +410,7 @@ public struct LanguageConfiguration {
         case .symbol:               return nil
         case .regexp:               return nil
         case .markdown:             return nil
-//        case .markdown:             return self.markdownSyntax.
+            //        case .markdown:             return self.markdownSyntax.
         }
     }
 }
@@ -377,15 +443,22 @@ extension LanguageConfiguration {
 extension LanguageConfiguration {
     
     // General purpose numeric literals
-    public static let binaryLit: Regex<Substring>   = /(?:[01]_*)+/
-    public static let octalLit: Regex<Substring>    = /(?:[0-7]_*)+/
-    public static let decimalLit: Regex<Substring>  = /(?:[0-9]_*)+/
-    public static let hexalLit: Regex<Substring>    = /(?:[0-9A-Fa-f]_*)+/
-    public static let optNegation: Regex<Substring> = /(?:\B-|\b)/
-    public static let exponentLit: Regex<Substring> = Regex {
+    public static let binaryLit: RegexWrapper   = .substring(/(?:[01]_*)+/)
+    public static let octalLit: RegexWrapper    = .substring(/(?:[0-7]_*)+/)
+    public static let decimalLit: RegexWrapper  = .substring(/(?:[0-9]_*)+/)
+    public static let hexalLit: RegexWrapper    = .substring(/(?:[0-9A-Fa-f]_*)+/)
+    public static let optNegation: RegexWrapper = .substring(/(?:\B-|\b)/)
+    
+    public static let exponentLit: RegexWrapper = RegexWrapper {
         /[eE](?:[+-])?/
         decimalLit
     }
+    
+    
+    //    public static let exponentLit: Regex<Substring> = Regex {
+    //        /[eE](?:[+-])?/
+    //        decimalLit
+    //    }
     public static let hexponentLit: Regex<Substring> = Regex {
         /[pP](?:[+-])?/
         decimalLit
@@ -504,11 +577,38 @@ extension LanguageConfiguration {
     
     public var tokenDictionary: TokenDictionary {
         
+        
         // Populate the token dictionary for the code state (tokenising plain code)
         //
         var codeTokens = [ TokenDescription(regex: /\(/, singleLexeme: "(", action: token(.roundBracketOpen))
                            , TokenDescription(regex: /\)/, singleLexeme: ")", action: token(.roundBracketClose))
         ]
+        
+        
+        
+        let codeBlockStart = TokenDescription(
+            regex: /```(\w+)?/,
+            action: (token: .codeBlockDelimiter, transition: { state in
+                var newState = state
+                newState.context = .code(language: $1 ?? "")
+                return newState
+            })
+        )
+        
+        let codeBlockEnd = TokenDescription(
+            regex: /```/,
+            action: (token: .codeBlockDelimiter, transition: { state in
+                var newState = state
+                newState.context = .markdown
+                return newState
+            })
+        )
+        
+        
+        if isMarkdown {
+            //            codeTokens.
+        }
+        
         if supportsSquareBrackets {
             codeTokens.append(contentsOf:
                                 [ TokenDescription(regex: /\[/, singleLexeme: "[", action: token(.squareBracketOpen))
