@@ -301,7 +301,7 @@ public struct LanguageConfiguration: Hashable {
     
     /// Dynamic language service that provides advanced syntactic as well as semantic information.
     ///
-    public let languageService: LanguageService?
+//    public let languageService: LanguageService?
     
     
     //    public let markdownSyntax: MarkdownSyntax?
@@ -325,7 +325,7 @@ public struct LanguageConfiguration: Hashable {
         operatorRegex: RegexWrapper? = nil,
         reservedIdentifiers: [String] = [],
         reservedOperators: [String] = [],
-        languageService: LanguageService? = nil,
+//        languageService: LanguageService? = nil,
         isMarkdown: Bool = false
     )
     {
@@ -341,51 +341,8 @@ public struct LanguageConfiguration: Hashable {
         self.operatorRegex          = operatorRegex
         self.reservedIdentifiers    = reservedIdentifiers
         self.reservedOperators      = reservedOperators
-        self.languageService        = languageService
+//        self.languageService        = languageService
         self.isMarkdown             = isMarkdown
-    }
-    
-    /// Defines a language configuration.
-    ///
-    /// This string flavour intialiser exists mainly for backwards compatibility. Avoid it if possible.
-    ///
-    @available(*, deprecated, message: "Use Regex")
-    public init(name: String,
-                stringRegexp: String?,
-                characterRegexp: String?,
-                numberRegexp: String?,
-                singleLineComment: String?,
-                nestedComment: LanguageConfiguration.BracketPair?,
-                identifierRegexp: String?,
-                reservedIdentifiers: [String],
-                languageService: LanguageService? = nil)
-    {
-        func makeRegex(from pattern: String?) -> Regex<Substring>? {
-            if let pattern {
-                
-                do { return try Regex<Substring>(pattern, as: Substring.self) }
-                catch let err {
-                    
-                    logger.info("Failed to compile regex: \(err.localizedDescription)")
-                    return nil
-                    
-                }
-            } else { return nil }
-        }
-        
-        self = LanguageConfiguration(name: name,
-                                     supportsSquareBrackets: true,
-                                     supportsCurlyBrackets: true,
-                                     stringRegex: makeRegex(from: stringRegexp),
-                                     characterRegex: makeRegex(from: characterRegexp),
-                                     numberRegex: makeRegex(from: numberRegexp),
-                                     singleLineComment: singleLineComment,
-                                     nestedComment: nestedComment,
-                                     identifierRegex: makeRegex(from: identifierRegexp),
-                                     operatorRegex: nil,
-                                     reservedIdentifiers: reservedIdentifiers,
-                                     reservedOperators: [],
-                                     languageService: languageService)
     }
     
     /// Yields the lexeme of the given token under this language configuration if the token has got a unique lexeme.
@@ -415,11 +372,11 @@ public struct LanguageConfiguration: Hashable {
     }
 }
 
-extension LanguageConfiguration: Equatable {
-    public static func ==(lhs: LanguageConfiguration, rhs: LanguageConfiguration) -> Bool {
-        lhs.name == rhs.name && lhs.languageService === rhs.languageService
-    }
-}
+//extension LanguageConfiguration: Equatable {
+//    public static func ==(lhs: LanguageConfiguration, rhs: LanguageConfiguration) -> Bool {
+//        lhs.name == rhs.name && lhs.languageService === rhs.languageService
+//    }
+//}
 
 extension LanguageConfiguration {
     
@@ -436,7 +393,8 @@ extension LanguageConfiguration {
                                                    identifierRegex: nil,
                                                    operatorRegex: nil,
                                                    reservedIdentifiers: [],
-                                                   reservedOperators: [])
+                                                   reservedOperators: []
+    )
     
 }
 

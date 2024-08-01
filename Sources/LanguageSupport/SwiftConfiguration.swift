@@ -72,15 +72,16 @@ extension LanguageConfiguration {
     return LanguageConfiguration(name: "Swift",
                                  supportsSquareBrackets: true,
                                  supportsCurlyBrackets: true,
-                                 stringRegex: /\"(?:\\\"|[^\"])*+\"/,
+//                                 stringRegex: /\"(?:\\\"|[^\"])*+\"/,
                                  characterRegex: nil,
-                                 numberRegex: numberRegex,
+//                                 numberRegex: numberRegex,
                                  singleLineComment: "//",
                                  nestedComment: (open: "/*", close: "*/"),
-                                 identifierRegex: identifierRegex,
-                                 operatorRegex: operatorRegex,
+//                                 identifierRegex: identifierRegex,
+//                                 operatorRegex: operatorRegex,
                                  reservedIdentifiers: swiftReservedIdentifiers,
-                                 reservedOperators: swiftReservedOperators,
-                                 languageService: languageService)
+                                 reservedOperators: swiftReservedOperators
+//                                 languageService: languageService
+    )
   }
 }

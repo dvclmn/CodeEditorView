@@ -465,11 +465,14 @@ final class CodeView: NSTextView {
         textContentStorage.primaryTextLayoutManager = textLayoutManager
         textContentStorage.textStorage              = codeStorage
         
-        setupCodeBlockManager()
         
-        codeStorageDelegate = CodeStorageDelegate(with: language, setText: setText)
+        self.codeStorageDelegate = CodeStorageDelegate(codeBlockManager: nil, setText: setText)
         
         super.init(frame: frame, textContainer: codeContainer)
+        
+        codeStorageDelegate.codeBlockManager = codeBlockManager
+
+        setupCodeBlockManager()
         
         textLayoutManager.setSafeRenderingAttributesValidator(with: codeViewDelegate) { (textLayoutManager, layoutFragment) in
             guard let textContentStorage = textLayoutManager.textContentManager as? NSTextContentStorage else { return }
@@ -519,7 +522,7 @@ final class CodeView: NSTextView {
         
         // Create the main gutter view
         /// Dave edit
-        if !language.isMarkdown {
+//        if !language.isMarkdown {
             let gutterView = GutterView(frame: CGRect.zero,
                                         textView: self,
                                         codeStorage: codeStorage,
@@ -529,7 +532,7 @@ final class CodeView: NSTextView {
             gutterView.autoresizingMask  = .none
             
             self.gutterView              = gutterView
-        }
+//        }
         // NB: The gutter view is floating. We cannot add it now, as we don't have an `enclosingScrollView` yet.
         
         let currentLineHighlightView = CodeBackgroundHighlightView(color: theme.currentLineColour)
@@ -562,7 +565,7 @@ final class CodeView: NSTextView {
         didChangeNotificationObserver
         = NotificationCenter.default.addObserver(forName: NSText.didChangeNotification, object: self, queue: .main){ [weak self] _ in
             
-            self?.considerCompletionFor(range: self!.rangeForUserCompletion)
+//            self?.considerCompletionFor(range: self!.rangeForUserCompletion)
             self?.invalidateMessageViews(withIDs: self!.codeStorageDelegate.lastInvalidatedMessageIDs)
         }
         
@@ -578,64 +581,34 @@ final class CodeView: NSTextView {
     
     private func setupCodeBlockManager() {
             codeBlockManager.onLanguageChange = { [weak self] range, newLanguage in
-                self?.handleLanguageChange(for: range, to: newLanguage)
+                self?.updateLanguage(for: range, to: newLanguage)
             }
         }
     
-    private func handleLanguageChange(for range: NSRange, to newLanguage: LanguageConfiguration) {
+    func updateLanguage(for range: NSRange, to newLanguage: LanguageConfiguration) {
             if let codeStorage = optCodeStorage {
                 Task { @MainActor in
                     do {
                         try await codeStorageDelegate.change(language: newLanguage, for: codeStorage, in: range)
-//                        try await startLanguageService(for: range)
                         
                         // Invalidate layout and display for the affected range
-                        self.invalidateDisplay(forCharacterRange: range)
+                        self.setNeedsDisplay(self.bounds)
                         self.layoutManager?.invalidateLayout(forCharacterRange: range, actualCharacterRange: nil)
                         
                     } catch let error {
                         logger.trace("Failed to change language to \(newLanguage.name) for range \(range): \(error.localizedDescription)")
                     }
                     
-                    // FIXME: This is an awful kludge to get the code view to redraw with the new highlighting. Emitting
-                    //        `codeStorage.edited(:range:changeInLength)` doesn't seem to work reliably.
+                    // FIXME: This is an awful kludge to get the code view to redraw with the new highlighting.
                     Task { @MainActor in
                         self.font = self.theme.font
                     }
                 }
             }
         }
+    
+   
 
-    /// Try to activate the language service for the currently configured language.
-    ///
-    func startLanguageService() async throws {
-        guard let textStorage else { return }
-        
-        diagnosticsCancellable = nil
-        eventsCancellable      = nil
-        
-        if let languageService = codeStorageDelegate.languageService {
-            
-            try await languageService.openDocument(with: textStorage.string,
-                                                   locationService: codeStorageDelegate.lineMapLocationConverter)
-            
-            // Report diagnostic messages as they come in.
-            diagnosticsCancellable = languageService.diagnostics
-                .receive(on: DispatchQueue.main)
-                .sink { [weak self] messages in
-                    
-                    self?.setMessages(messages)
-                    self?.update(messages: messages)
-                }
-            
-            eventsCancellable = languageService.events
-                .receive(on: DispatchQueue.main)
-                .sink { [weak self] event in
-                    
-                    self?.process(event: event)
-                }
-        }
-    }
     
     @available(*, unavailable)
     required init?(coder: NSCoder) {
@@ -935,7 +908,8 @@ extension CodeView {
             fontWidth               = theFont.maximumHorizontalAdvancement,  // NB: we deal only with fixed width fonts
             gutterWidthInCharacters = CGFloat(7),
             /// Dave: Bit hacky for now
-            gutterWidth             = (language.isMarkdown ? .zero : ceil(fontWidth * gutterWidthInCharacters)),
+            gutterWidth             = (ceil(fontWidth * gutterWidthInCharacters)),
+//            gutterWidth             = (language.isMarkdown ? .zero : ceil(fontWidth * gutterWidthInCharacters)),
             minimumHeight           = max(contentSize.height, documentVisibleRect.height),
             gutterSize              = CGSize(width: gutterWidth, height: minimumHeight),
             lineFragmentPadding     = CGFloat(5)
@@ -1311,15 +1285,15 @@ extension CodeView {
     // MARK: Events
     
     
-    func process(event: LanguageServiceEvent) {
-        guard let codeStorage = optCodeStorage else { return }
-        
-        switch event {
-            
-        case .tokensAvailable(lineRange: let lineRange):
-            codeStorageDelegate.requestSemanticTokens(for: lineRange, in: codeStorage)
-        }
-    }
+//    func process(event: LanguageServiceEvent) {
+//        guard let codeStorage = optCodeStorage else { return }
+//        
+//        switch event {
+//            
+//        case .tokensAvailable(lineRange: let lineRange):
+//            codeStorageDelegate.requestSemanticTokens(for: lineRange, in: codeStorage)
+//        }
+//    }
 }
 
 

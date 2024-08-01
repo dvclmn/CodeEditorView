@@ -81,22 +81,22 @@ extension CodeView {
         infoPopover.show(relativeTo: convert(windowRect, from: nil), of: self, preferredEdge: .maxY)
     }
     
-    func infoAction() {
-        guard let languageService = optLanguageService else { return }
-        
-        let width = min((window?.frame.width ?? 250) * 0.75, 500)
-        
-        let range = selectedRange()
-        Task {
-            do {
-                if let info = try await languageService.info(at: range.location) {
-                    
-                    show(infoPopover: InfoPopover(displaying: info.view, width: width), for: info.anchor ?? range)
-                    
-                }
-            } catch let error { logger.trace("Info action failed: \(error.localizedDescription)") }
-        }
-    }
+//    func infoAction() {
+//        guard let languageService = optLanguageService else { return }
+//        
+//        let width = min((window?.frame.width ?? 250) * 0.75, 500)
+//        
+//        let range = selectedRange()
+//        Task {
+//            do {
+//                if let info = try await languageService.info(at: range.location) {
+//                    
+//                    show(infoPopover: InfoPopover(displaying: info.view, width: width), for: info.anchor ?? range)
+//                    
+//                }
+//            } catch let error { logger.trace("Info action failed: \(error.localizedDescription)") }
+//        }
+//    }
 }
 
 
@@ -426,71 +426,71 @@ extension CodeView {
     ///
     /// - Parameter location: The character location for which code completions are requested.
     ///
-    func computeAndShowCompletions(at location: Int) async throws {
-        guard let languageService = optLanguageService else { return }
-        
-        do {
-            
-            let completions = try await languageService.completions(at: location, reason: .standard)
-            try Task.checkCancellation()   // may have been cancelled in the meantime due to further user action
-            show(completions: completions, for: rangeForUserCompletion)
-            
-        } catch let error { logger.trace("Completion action failed: \(error.localizedDescription)") }
-    }
+//    func computeAndShowCompletions(at location: Int) async throws {
+//        guard let languageService = optLanguageService else { return }
+//        
+//        do {
+//            
+//            let completions = try await languageService.completions(at: location, reason: .standard)
+//            try Task.checkCancellation()   // may have been cancelled in the meantime due to further user action
+//            show(completions: completions, for: rangeForUserCompletion)
+//            
+//        } catch let error { logger.trace("Completion action failed: \(error.localizedDescription)") }
+//    }
     
     /// Excplicitly user initiated completion action by a command or trigger character.
     ///
-    func completionAction() {
-        
-        // Stop any already running completion task
-        completionTask?.cancel()
-        
-        // If we already show the completion panel close it — we want the shortcut to toggle visbility. Otherwise,
-        // initiate a completion task.
-        if completionPanel.isKeyWindow {
-            
-            completionPanel.close()
-            
-        } else {
-            
-            completionTask = Task {
-                try await computeAndShowCompletions(at: selectedRange().location)
-            }
-            
-        }
-    }
+//    func completionAction() {
+//        
+//        // Stop any already running completion task
+//        completionTask?.cancel()
+//        
+//        // If we already show the completion panel close it — we want the shortcut to toggle visbility. Otherwise,
+//        // initiate a completion task.
+//        if completionPanel.isKeyWindow {
+//            
+//            completionPanel.close()
+//            
+//        } else {
+//            
+//            completionTask = Task {
+//                try await computeAndShowCompletions(at: selectedRange().location)
+//            }
+//            
+//        }
+//    }
     
     /// This function needs to be invoked whenever the completion range changes; i.e., once a text change has been made.
     ///
     /// - Parameter range: The current completion range (range of partial word in front of the insertion point) as
     ///     reported by the text view.
     ///
-    func considerCompletionFor(range: NSRange) {
-        guard let codeStorageDelegate = optCodeStorage?.delegate as? CodeStorageDelegate else { return }
-        
-        // Stop any already running completion task
-        completionTask?.cancel()
-        
-        if range.length > 0 && codeStorageDelegate.processingOneCharacterAddition {
-            
-            completionTask = Task {
-                
-                // Delay completion a bit at the start of a word (the user may still be typing) unless the completion window
-                // is already open.
-                // NB: throws if task gets cancelled in the meantime.
-                if range.length < 3 && !completionPanel.isKeyWindow { try await Task.sleep(until: .now + .seconds(0.5)) }
-                
-                // Trigger completion
-                try await computeAndShowCompletions(at: range.max)
-            }
-            
-        } else if range.length == 0 && completionPanel.isKeyWindow {
-            
-            // If the incomplete word get deleted, while the panel is open, close it
-            completionPanel.close()
-            
-        }
-    }
+//    func considerCompletionFor(range: NSRange) {
+//        guard let codeStorageDelegate = optCodeStorage?.delegate as? CodeStorageDelegate else { return }
+//        
+//        // Stop any already running completion task
+//        completionTask?.cancel()
+//        
+//        if range.length > 0 && codeStorageDelegate.processingOneCharacterAddition {
+//            
+//            completionTask = Task {
+//                
+//                // Delay completion a bit at the start of a word (the user may still be typing) unless the completion window
+//                // is already open.
+//                // NB: throws if task gets cancelled in the meantime.
+//                if range.length < 3 && !completionPanel.isKeyWindow { try await Task.sleep(until: .now + .seconds(0.5)) }
+//                
+//                // Trigger completion
+//                try await computeAndShowCompletions(at: range.max)
+//            }
+//            
+//        } else if range.length == 0 && completionPanel.isKeyWindow {
+//            
+//            // If the incomplete word get deleted, while the panel is open, close it
+//            completionPanel.close()
+//            
+//        }
+//    }
     
 }
 
@@ -524,20 +524,20 @@ extension CodeView {
         capabilitiesWindow.makeKeyAndOrderFront(nil)
     }
     
-    func capabilitiesAction() {
-        guard let languageService = optLanguageService else { return }
-        
-        Task {
-            do {
-                if let capabilitiesView = try await languageService.capabilities() {
-                    
-                    show(capabilitiesWindow: CapabilitiesWindow(displaying: capabilitiesView))
-                    logger.trace("Retrieved capabilities")
-                    
-                }
-            } catch let error { logger.trace("Capabilities action failed: \(error.localizedDescription)") }
-        }
-    }
+//    func capabilitiesAction() {
+//        guard let languageService = optLanguageService else { return }
+//        
+//        Task {
+//            do {
+//                if let capabilitiesView = try await languageService.capabilities() {
+//                    
+//                    show(capabilitiesWindow: CapabilitiesWindow(displaying: capabilitiesView))
+//                    logger.trace("Retrieved capabilities")
+//                    
+//                }
+//            } catch let error { logger.trace("Capabilities action failed: \(error.localizedDescription)") }
+//        }
+//    }
 }
 
 #endif

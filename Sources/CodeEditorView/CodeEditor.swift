@@ -129,7 +129,7 @@ public struct CodeEditor {
         public var capabilities: (() -> Void)?
     }
     
-
+    
     public struct Telemetry {
         
         public var currentMode: EditorMode
@@ -147,7 +147,7 @@ public struct CodeEditor {
     
     
     
-//    let language:            LanguageConfiguration
+    //    let language:            LanguageConfiguration
     let layout:              LayoutConfiguration
     let breakUndoCoalescing: PassthroughSubject<(), Never>?
     let setActions:          ((Actions) -> Void)?
@@ -175,9 +175,8 @@ public struct CodeEditor {
     ///
     public init(text:                Binding<String>,
                 position:            Binding<Position>,
-                messages:            Binding<Set<TextLocated<Message>>>,
                 telemetry:           Binding<Telemetry>,
-//                language:            LanguageConfiguration = .none,
+                //                language:            LanguageConfiguration = .none,
                 layout:              LayoutConfiguration = .standard,
                 breakUndoCoalescing: PassthroughSubject<(), Never>? = nil,
                 setActions:          ((Actions) -> Void)? = nil
@@ -185,9 +184,8 @@ public struct CodeEditor {
     {
         self._text               = text
         self._position           = position
-        self._messages           = messages
         self._telemetry          = telemetry
-//        self.language            = language
+        //        self.language            = language
         self.layout              = layout
         self.breakUndoCoalescing = breakUndoCoalescing
         self.setActions          = setActions
@@ -384,9 +382,9 @@ extension CodeEditor: NSViewRepresentable {
         // NB: We are not setting `codeView.text` here. That will happen via `updateNSView(:)`.
         // This implies that we must take care to not report that initial updates as a change to any connected language
         // service.
-        if let codeStorageDelegate = codeView.optCodeStorage?.delegate as? CodeStorageDelegate {
-            codeStorageDelegate.skipNextChangeNotificationToLanguageService = true
-        }
+//        if let codeStorageDelegate = codeView.optCodeStorage?.delegate as? CodeStorageDelegate {
+//            codeStorageDelegate.skipNextChangeNotificationToLanguageService = true
+//        }
         
         if let delegate = codeView.delegate as? CodeViewDelegate {
             
@@ -428,21 +426,23 @@ extension CodeEditor: NSViewRepresentable {
             codeView?.breakUndoCoalescing()
         }
         
+        
+        
         // Set the initial actions
         //
         // NB: It is important that the actions don't capture the code view strongly.
-        context.coordinator.actions = Actions(language: Actions.Language(name: language.name),
-                                              info: { [weak codeView] in codeView?.infoAction() },
-                                              completions: { [weak codeView] in codeView?.completionAction() },
-                                              capabilities: { [weak codeView] in codeView?.capabilitiesAction() })
-        
-        let coordinator = context.coordinator
-        context.coordinator.extraActionsCancellable = codeView.optLanguageService?.extraActions
-            .receive(on: DispatchQueue.main)
-            .sink { [coordinator] actions in
-                
-                coordinator.actions.language.extraActions = actions
-            }
+        //        context.coordinator.actions = Actions(language: Actions.Language(name: language.name),
+        //                                              info: { [weak codeView] in codeView?.infoAction() },
+        //                                              completions: { [weak codeView] in codeView?.completionAction() },
+        //                                              capabilities: { [weak codeView] in codeView?.capabilitiesAction() })
+        //
+        //        let coordinator = context.coordinator
+        //        context.coordinator.extraActionsCancellable = codeView.optLanguageService?.extraActions
+        //            .receive(on: DispatchQueue.main)
+        //            .sink { [coordinator] actions in
+        //
+        //                coordinator.actions.language.extraActions = actions
+        //            }
         
         
         
@@ -450,7 +450,9 @@ extension CodeEditor: NSViewRepresentable {
     }
     
     public func updateNSView(_ scrollView: NSScrollView, context: Context) {
+        
         guard let codeView = scrollView.documentView as? CodeView else { return }
+        
         context.coordinator.updatingView = true
         defer {
             context.coordinator.updatingView = false
@@ -477,8 +479,14 @@ extension CodeEditor: NSViewRepresentable {
         }
         if theme.id != codeView.theme.id { codeView.theme = theme }
         if layout != codeView.viewLayout { codeView.viewLayout = layout }
+        
         // Equality on language configurations implies the same name and the same language service.
-        if language != codeView.language { codeView.language = language }
+        
+        codeView.codeBlockManager.checkForLanguageChanges { (range, newLanguage) in
+            // Update the language for the specific code block
+            codeView.updateLanguage(for: newLanguage, to: range)
+        }
+        
     }
     
     public func makeCoordinator() -> Coordinator {
@@ -509,7 +517,7 @@ extension CodeEditor: NSViewRepresentable {
             if self.position.selections != newValue { self.position.selections = newValue
             }
             
-            let tokensInRange: [CodeStorage.LineToken] 
+            let tokensInRange: [CodeStorage.LineToken]
             
             tokensInRange = textView.optCodeStorage?.tokens(in: textView.selectedRange()) ?? []
             
@@ -608,9 +616,7 @@ struct CodeEditorExample: View {
             CodeEditor(
                 text: $text,
                 position: $editPosition,
-                messages: .constant(Set()),
                 telemetry: $telemetry,
-                language: .markdown(),
                 layout: .init(showMinimap: false, wrapText: true)
             )
             .padding(.top)

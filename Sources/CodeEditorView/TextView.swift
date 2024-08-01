@@ -82,9 +82,9 @@ extension TextView {
 
   /// The text view's language service.
   ///
-  var optLanguageService: LanguageService? {
-    return (optCodeStorage?.delegate as? CodeStorageDelegate)?.languageService
-  }
+//  var optLanguageService: LanguageService? {
+//    return (optCodeStorage?.delegate as? CodeStorageDelegate)?.languageService
+//  }
 
   /// Determine the visible range of lines.
   ///

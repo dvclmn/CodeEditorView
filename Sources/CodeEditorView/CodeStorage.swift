@@ -64,6 +64,8 @@ class CodeStorage: NSTextStorage {
   override func attributes(at location: Int, effectiveRange range: NSRangePointer?) -> [NSAttributedString.Key : Any] {
     return textStorage.attributes(at: location, effectiveRange: range)
   }
+    
+    
 
   // Extended to handle auto-deletion of adjacent matching brackets
   override func replaceCharacters(in range: NSRange, with str: String) {
@@ -74,7 +76,8 @@ class CodeStorage: NSTextStorage {
     // bracket if it is directly adjacent
     if range.length == 1 && str.isEmpty,
        let deletedToken = token(at: range.location).token,
-       let language     = (delegate as? CodeStorageDelegate)?.language,
+       let codeBlockManager = (delegate as? CodeStorageDelegate)?.codeBlockManager,
+       let (_, language) = codeBlockManager.languageAndRangeContaining(location: range.location),
        deletedToken.token.isOpenBracket
         && range.location + 1 < length
         && language.lexeme(of: deletedToken.token)?.count == 1
