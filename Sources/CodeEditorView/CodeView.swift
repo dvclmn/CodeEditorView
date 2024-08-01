@@ -369,8 +369,6 @@ final class CodeView: NSTextView {
     ///
     var oldLastLineOfInsertionPoint: Int? = 1
     
-    var telemetry = CodeEditor.Telemetry()
-    
     /// The current highlighting theme
     ///
     @Invalidating(.layout, .display)
@@ -389,7 +387,6 @@ final class CodeView: NSTextView {
         }
     }
 
-    
     /// The current view layout.
     ///
     @Invalidating(.layout)
@@ -403,21 +400,9 @@ final class CodeView: NSTextView {
     ///
     private var eventsCancellable: Cancellable?
     
-    /// Holds the info popover if there is one.
-    ///
-    var infoPopover: InfoPopover?
-    
-    /// Holds the completion panel. It is always available, but open, closed, and positioned on demand.
-    ///
-    var completionPanel: CompletionPanel = CompletionPanel()
-    
     /// Cancellable task used to compute completions.
     ///
     var completionTask: Task<(), Error>?
-    
-    /// Holds the capabilities window if there is one.
-    ///
-    var capabilitiesWindow: CapabilitiesWindow?
     
     /// KVO observations that need to be retained.
     ///

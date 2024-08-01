@@ -99,58 +99,19 @@ public struct CodeEditor {
             /// The name of the language.
             ///
             public let name: String
-            
-            /// The extra actions currently available.
-            ///
-            public var extraActions: [ExtraAction] = []
         }
         
         /// Language-specific actions, if any.
         ///
         public var language: Language = Language(name: "Text")
-        
-        /// Display semantic information about the current selection.
-        ///
-        public var info: (() -> Void)?
-        
-        /// Display completions for the partial word in front of the selection.
-        ///
-        public var completions: (() -> Void)?
-        
-        // Dev support
-        
-        /// Diagnostic information about the capabilities of the attached language service if any.
-        ///
-        public var capabilities: (() -> Void)?
     }
-    
-    
-    public struct Telemetry {
-        
-//        public var currentMode: EditorMode
-//        public var currentSyntax: String?
-//        
-//        public init(
-//            currentMode: EditorMode = .markdown,
-//            currentSyntax: String? = nil
-//        ) {
-//            self.currentMode = currentMode
-//            self.currentSyntax = currentSyntax
-//        }
-    }
-    
-    
-    
-    
-    //    let language:            LanguageConfiguration
+
     let layout:              LayoutConfiguration
     let breakUndoCoalescing: PassthroughSubject<(), Never>?
     let setActions:          ((Actions) -> Void)?
     
     @Binding private var text:     String
     @Binding private var position: Position
-//    @Binding private var messages: Set<TextLocated<Message>>
-//    @Binding var telemetry: Telemetry
     
     /// Creates a fully configured code editor.
     ///
@@ -170,8 +131,6 @@ public struct CodeEditor {
     ///
     public init(text:                Binding<String>,
                 position:            Binding<Position>,
-//                telemetry:           Binding<Telemetry>,
-                //                language:            LanguageConfiguration = .none,
                 layout:              LayoutConfiguration = .standard,
                 breakUndoCoalescing: PassthroughSubject<(), Never>? = nil,
                 setActions:          ((Actions) -> Void)? = nil
@@ -179,8 +138,6 @@ public struct CodeEditor {
     {
         self._text               = text
         self._position           = position
-//        self._telemetry          = telemetry
-        //        self.language            = language
         self.layout              = layout
         self.breakUndoCoalescing = breakUndoCoalescing
         self.setActions          = setActions
@@ -189,10 +146,8 @@ public struct CodeEditor {
     public class _Coordinator {
         @Binding fileprivate var text:     String
         @Binding fileprivate var position: Position
-//        @Binding fileprivate var telemetry: CodeEditor.Telemetry
+        
         fileprivate let setActions: ((Actions) -> Void)?
-        
-        
         
         /// In order to avoid update cycles, where view code tries to update SwiftUI state variables (such as the view's
         /// bindings) during a SwiftUI view update, we use `updatingView` as a flag that indicates whether the view is
@@ -211,12 +166,10 @@ public struct CodeEditor {
         init(
             text: Binding<String>,
             position: Binding<Position>,
-//            telemetry: Binding<CodeEditor.Telemetry>,
             setAction: ((Actions) -> Void)?
         ) {
             self._text      = text
             self._position  = position
-//            self._telemetry = telemetry
             self.setActions = setAction
         }
     }

@@ -57,7 +57,7 @@ extension LanguageConfiguration {
     
     /// Language configuration for Markdown
     ///
-    public static func markdown(_ languageService: LanguageService? = nil) -> LanguageConfiguration {
+    public static func markdown() -> LanguageConfiguration {
 //        let headingRegex = Regex {
 //            OneOrMore("#")
 //            " "

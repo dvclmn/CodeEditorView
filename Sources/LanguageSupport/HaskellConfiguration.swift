@@ -19,7 +19,7 @@ extension LanguageConfiguration {
 
   /// Language configuration for Haskell (including GHC extensions)
   ///
-  public static func haskell(_ languageService: LanguageService? = nil) -> LanguageConfiguration {
+  public static func haskell() -> LanguageConfiguration {
       
       
       let numberRegex = Regex {

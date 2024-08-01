@@ -275,52 +275,52 @@ extension CodeStorageDelegate {
     
     /// This class serves as a location service on the basis of the line map of an encapsulated storage delegate.
     ///
-    final class LineMapLocationService: LocationService {
-        private weak var codeStorageDelegate: CodeStorageDelegate?
-        
-        enum ConversionError: Error {
-            case lineMapUnavailable
-            case locationOutOfBounds
-            case lineOutOfBounds
-        }
-        
-        /// Location converter on the basis of the line map of the given storage delegate.
-        ///
-        /// - Parameter codeStorageDelegate: The code storage delegate whose line map ought to serve as the basis for the
-        ///   conversion.
-        ///
-        init(codeStorageDelegate: CodeStorageDelegate) {
-            self.codeStorageDelegate = codeStorageDelegate
-        }
-        
-        func textLocation(from location: Int) -> Result<TextLocation, Error> {
-            guard let lineMap = codeStorageDelegate?.lineMap else { return .failure(ConversionError.lineMapUnavailable) }
-            
-            if let line    = lineMap.lineOf(index: location),
-               let oneLine = lineMap.lookup(line: line)
-            {
-                
-                return .success(TextLocation(zeroBasedLine: line, column: location - oneLine.range.location))
-                
-            } else { return .failure(ConversionError.locationOutOfBounds) }
-        }
-        
-        func location(from textLocation: TextLocation) -> Result<Int, Error> {
-            guard let lineMap = codeStorageDelegate?.lineMap else { return .failure(ConversionError.lineMapUnavailable) }
-            
-            if let oneLine = lineMap.lookup(line: textLocation.zeroBasedLine) {
-                
-                return .success(oneLine.range.location + textLocation.zeroBasedColumn)
-                
-            } else { return .failure(ConversionError.lineOutOfBounds) }
-        }
-        
-        func length(of zeroBasedLine: Int) -> Int? { codeStorageDelegate?.lineMap.lookup(line: zeroBasedLine)?.range.length }
-    }
+//    final class LineMapLocationService: LocationService {
+//        private weak var codeStorageDelegate: CodeStorageDelegate?
+//        
+//        enum ConversionError: Error {
+//            case lineMapUnavailable
+//            case locationOutOfBounds
+//            case lineOutOfBounds
+//        }
+//        
+//        /// Location converter on the basis of the line map of the given storage delegate.
+//        ///
+//        /// - Parameter codeStorageDelegate: The code storage delegate whose line map ought to serve as the basis for the
+//        ///   conversion.
+//        ///
+//        init(codeStorageDelegate: CodeStorageDelegate) {
+//            self.codeStorageDelegate = codeStorageDelegate
+//        }
+//        
+//        func textLocation(from location: Int) -> Result<TextLocation, Error> {
+//            guard let lineMap = codeStorageDelegate?.lineMap else { return .failure(ConversionError.lineMapUnavailable) }
+//            
+//            if let line    = lineMap.lineOf(index: location),
+//               let oneLine = lineMap.lookup(line: line)
+//            {
+//                
+//                return .success(TextLocation(zeroBasedLine: line, column: location - oneLine.range.location))
+//                
+//            } else { return .failure(ConversionError.locationOutOfBounds) }
+//        }
+//        
+//        func location(from textLocation: TextLocation) -> Result<Int, Error> {
+//            guard let lineMap = codeStorageDelegate?.lineMap else { return .failure(ConversionError.lineMapUnavailable) }
+//            
+//            if let oneLine = lineMap.lookup(line: textLocation.zeroBasedLine) {
+//                
+//                return .success(oneLine.range.location + textLocation.zeroBasedColumn)
+//                
+//            } else { return .failure(ConversionError.lineOutOfBounds) }
+//        }
+//        
+//        func length(of zeroBasedLine: Int) -> Int? { codeStorageDelegate?.lineMap.lookup(line: zeroBasedLine)?.range.length }
+//    }
     
     /// Yield a location converter for the text maintained by the present code storage delegate.
     ///
-    var lineMapLocationConverter: LineMapLocationService { LineMapLocationService(codeStorageDelegate: self) }
+//    var lineMapLocationConverter: LineMapLocationService { LineMapLocationService(codeStorageDelegate: self) }
 }
 
 

@@ -20,7 +20,6 @@ public class CodeBlockManager {
     
     var onLanguageChange: ((NSRange, LanguageConfiguration) -> Void)?
     
-    
     func addCodeBlock(range: NSRange, language: LanguageConfiguration) {
         let newBlock = CodeBlock(range: range, language: language)
         codeBlocks.append(newBlock)
@@ -35,7 +34,6 @@ public class CodeBlockManager {
             }
         }
     }
-    
     
     func removeCodeBlock(at range: NSRange) {
         codeBlocks.removeAll { $0.range.intersection(range) != nil }
