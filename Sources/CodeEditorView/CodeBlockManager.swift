@@ -8,7 +8,7 @@
 import Foundation
 import LanguageSupport
 
-struct CodeBlock: Equatable {
+struct CodeBlock {
     var range: NSRange
     var language: LanguageConfiguration
 }
@@ -30,7 +30,7 @@ public class CodeBlockManager {
         if let index = codeBlocks.firstIndex(where: { $0.range.intersection(range) != nil }) {
             let oldLanguage = codeBlocks[index].language
             codeBlocks[index].language = newLanguage
-            if oldLanguage != newLanguage {
+            if oldLanguage.name != newLanguage.name {
                 onLanguageChange?(codeBlocks[index].range, newLanguage)
             }
         }

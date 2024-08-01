@@ -54,13 +54,13 @@ struct TelemetryMode: View {
                 layout: .init(showMinimap: false, wrapText: true)
             )
             
-            HStack {
-                Text("Mode: \(modeDescription)")
-                if let syntax = telemetry.currentSyntax {
-                    Text("Syntax: \(syntax)")
-                }
-            }
-            .foregroundStyle(.secondary)
+//            HStack {
+//                Text("Mode: \(modeDescription)")
+//                if let syntax = telemetry.currentSyntax {
+//                    Text("Syntax: \(syntax)")
+//                }
+//            }
+//            .foregroundStyle(.secondary)
         }
         .padding(40)
         .frame(width: 600, height: 700)

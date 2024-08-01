@@ -125,7 +125,8 @@ struct LineInfo {
 
 class CodeStorageDelegate: NSObject, NSTextStorageDelegate {
     
-    private var tokenisers: [LanguageConfiguration: LanguageConfiguration.Tokeniser] = [:]
+    
+    //    private var tokenisers: [LanguageConfiguration: LanguageConfiguration.Tokeniser] = [:]
     weak var codeBlockManager: CodeBlockManager?
     
     private var tokeniser: LanguageConfiguration.Tokeniser?  // cache the tokeniser
@@ -192,26 +193,42 @@ class CodeStorageDelegate: NSObject, NSTextStorageDelegate {
     //  }
     
     
+    
     // MARK: Updates
     
-    /// Change the language for a specific range in the code storage.
+    /// Reinitialise the code storage delegate with a new language.
     ///
-    /// - Parameters:
-    ///   - language: The new language configuration.
-    ///   - codeStorage: The code storage to update.
-    ///   - range: The range to apply the new language to.
+    /// - Parameter language: The new language.
+    ///
+    /// This implies stopping any already running language service first.
+    ///
     func change(language: LanguageConfiguration, for codeStorage: CodeStorage, in range: NSRange) async throws {
-        // Update the code block manager with the new language for this range
-        codeBlockManager?.updateCodeBlock(at: range, newLanguage: language)
         
-        // Ensure we have a tokeniser for this language
-        if tokenisers[language] == nil {
-            tokenisers[language] = Tokeniser(for: language.tokenDictionary)
-        }
         
-        // Tokenize the affected range
-        let _ = self.tokenise(range: range, in: codeStorage)
+        self.tokeniser = Tokeniser(for: language.tokenDictionary)
+        let _ = tokenise(range: NSRange(location: 0, length: codeStorage.length), in: codeStorage)
     }
+    //
+    //    // MARK: Updates
+    //
+    //    /// Change the language for a specific range in the code storage.
+    //    ///
+    //    /// - Parameters:
+    //    ///   - language: The new language configuration.
+    //    ///   - codeStorage: The code storage to update.
+    //    ///   - range: The range to apply the new language to.
+    //    func change(language: LanguageConfiguration, for codeStorage: CodeStorage, in range: NSRange) async throws {
+    //        // Update the code block manager with the new language for this range
+    //        codeBlockManager?.updateCodeBlock(at: range, newLanguage: language)
+    //
+    //        // Ensure we have a tokeniser for this language
+    //        if tokenisers[language] == nil {
+    //            tokenisers[language] = Tokeniser(for: language.tokenDictionary)
+    //        }
+    //
+    //        // Tokenize the affected range
+    //        let _ = self.tokenise(range: range, in: codeStorage)
+    //    }
     
     
     
@@ -630,7 +647,7 @@ extension CodeStorageDelegate {
     ///     lines: The lines for which semantic token information is requested.
     ///     textStorage: The text storage whose contents is being tokenised.
     ///
-
+    
     
     /// Merge semantic token information for one line into the line map.
     ///

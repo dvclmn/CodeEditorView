@@ -362,7 +362,7 @@ final class CodeView: NSTextView {
     
     // Code blocks
 //    @Invalidating(.layout, .display)
-    private var codeBlockManager = CodeBlockManager()
+    var codeBlockManager = CodeBlockManager()
     
     /// Contains the line on which the insertion point was located, the last time the selection range got set (if the
     /// selection was an insertion point at all; i.e., it's length was 0).
@@ -404,7 +404,7 @@ final class CodeView: NSTextView {
     
     /// Hook to propagate message sets upwards in the view hierarchy.
     ///
-    let setMessages: (Set<TextLocated<Message>>) -> Void
+//    let setMessages: (Set<TextLocated<Message>>) -> Void
     
     /// This is the last reported set of `messages`. New message sets can come from the context or from a language server.
     ///
@@ -447,13 +447,13 @@ final class CodeView: NSTextView {
     init(frame: CGRect,
          viewLayout: CodeEditor.LayoutConfiguration,
          theme: Theme,
-         setText: @escaping (String) -> Void,
-         setMessages: @escaping (Set<TextLocated<Message>>) -> Void
+         setText: @escaping (String) -> Void
+//         setMessages: @escaping (Set<TextLocated<Message>>) -> Void
     )
     {
         self.theme       = theme
         self.viewLayout  = viewLayout
-        self.setMessages = setMessages
+//        self.setMessages = setMessages
         
         // Use custom components that are gutter-aware and support code-specific editing actions and highlighting.
         let textLayoutManager  = NSTextLayoutManager(),
@@ -585,7 +585,10 @@ final class CodeView: NSTextView {
             }
         }
     
-    func updateLanguage(for range: NSRange, to newLanguage: LanguageConfiguration) {
+    func updateLanguage(
+        for range: NSRange,
+        to newLanguage: LanguageConfiguration
+    ) {
             if let codeStorage = optCodeStorage {
                 Task { @MainActor in
                     do {

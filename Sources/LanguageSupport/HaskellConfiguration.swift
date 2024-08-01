@@ -22,7 +22,7 @@ extension LanguageConfiguration {
   public static func haskell(_ languageService: LanguageService? = nil) -> LanguageConfiguration {
       
       
-      let numberRegex = RegexWrapper.builder {
+      let numberRegex = Regex {
                   optNegation
                   ChoiceOf {
                       Regex { /0[bB]/; binaryLit }
@@ -35,7 +35,7 @@ extension LanguageConfiguration {
                   }
               }
               
-              let identifierRegex = RegexWrapper.builder {
+              let identifierRegex = Regex {
                   identifierHeadCharacters
                   ZeroOrMore {
                       CharacterClass(identifierCharacters, .anyOf("'"))
@@ -46,7 +46,7 @@ extension LanguageConfiguration {
     let symbolCharacter = CharacterClass(.anyOf("!#$%&⋆+./<=>?@\\^|-~:"),
                                          operatorHeadCharacters.subtracting(.anyOf("/=-+!*%<>&|^~?"))),
                                          // This is for the Unicode symbols, but the Haskell spec actually specifies "any Unicode symbol or punctuation".
-        operatorRegex = RegexWrapper.builder {
+        operatorRegex = Regex {
           symbolCharacter
           ZeroOrMore { symbolCharacter }
         }

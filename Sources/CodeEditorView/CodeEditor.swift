@@ -149,7 +149,7 @@ public struct CodeEditor {
     
     @Binding private var text:     String
     @Binding private var position: Position
-    @Binding private var messages: Set<TextLocated<Message>>
+//    @Binding private var messages: Set<TextLocated<Message>>
 //    @Binding var telemetry: Telemetry
     
     /// Creates a fully configured code editor.
@@ -365,8 +365,9 @@ extension CodeEditor: NSViewRepresentable {
         let codeView = CodeView(frame: CGRect(x: 0, y: 0, width: 100, height: 40),
                                 viewLayout: layout,
                                 theme: context.environment.codeEditorTheme,
-                                setText: setText(_:),
-                                setMessages: { messages = $0 })
+                                setText: setText(_:)
+//                                setMessages: { messages = $0 }
+        )
         codeView.isVerticallyResizable   = true
         codeView.isHorizontallyResizable = false
         codeView.autoresizingMask        = .width
@@ -479,7 +480,10 @@ extension CodeEditor: NSViewRepresentable {
         
         codeView.codeBlockManager.checkForLanguageChanges { (range, newLanguage) in
             // Update the language for the specific code block
-            codeView.updateLanguage(for: newLanguage, to: range)
+            codeView.updateLanguage(
+                for: range,
+                to: newLanguage
+            )
         }
         
     }
