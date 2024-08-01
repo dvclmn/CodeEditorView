@@ -233,14 +233,6 @@ public protocol LanguageService: AnyObject {
   var events: PassthroughSubject<LanguageServiceEvent, Never> { get }
 
 
-  // MARK: Diagnostics
-
-  /// Notifies the code editor about a new set of diagnoistic messages. A new set replaces the previous set (merging
-  /// happens server-side, not client-side).
-  ///
-  var diagnostics: CurrentValueSubject<Set<TextLocated<Message>>, Never> { get }
-
-
   // MARK: Code completion
 
   /// Characters that are not valid inside identifiers, but should trigger code completion.

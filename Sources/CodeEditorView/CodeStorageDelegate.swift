@@ -56,42 +56,6 @@ enum CommentStyle {
 ///
 struct LineInfo {
     
-    /// Structure characterising a bundle of messages reported for a single line. It features a stable identity to be able
-    /// to associate display information in separate structures.
-    ///
-    /// NB: We don't identify a message bundle by the line number on which it appears, because edits further up can
-    ///     increase and decrease the line number of a given bundle. We need a stable identifier.
-    ///
-    struct MessageBundle: Identifiable {
-        let id: UUID
-        
-        private(set)
-        var messages: [Message]
-        
-        init(messages: [Message]) {
-            self.id       = UUID()
-            self.messages = messages
-        }
-        
-        /// Add a message, such that it overrides its previous version if the message is already present.
-        ///
-        /// - Parameter message: The message to add.
-        ///
-        mutating func add(message: Message) {
-            if let idx = messages.firstIndex(of: message) {
-                messages[idx] = message
-            } else {
-                messages.append(message)
-            }
-        }
-        
-        mutating func remove(message: Message) {
-            if let idx = messages.firstIndex(of: message) {
-                messages.remove(at: idx)
-            }
-        }
-    }
-    
     var commentDepthStart: Int   // nesting depth for nested comments at the start of this line
     var commentDepthEnd:   Int   // nesting depth for nested comments at the end of this line
     
@@ -112,11 +76,6 @@ struct LineInfo {
     ///
     var commentRanges: [NSRange]
     
-    /// The messages reported for this line.
-    ///
-    /// NB: The bundle may be non-nil, but still contain no messages (after all messages have been removed).
-    ///
-    var messages: MessageBundle? = nil
 }
 
 
@@ -125,8 +84,6 @@ struct LineInfo {
 
 class CodeStorageDelegate: NSObject, NSTextStorageDelegate {
     
-    
-    //    private var tokenisers: [LanguageConfiguration: LanguageConfiguration.Tokeniser] = [:]
     weak var codeBlockManager: CodeBlockManager?
     
     private var tokeniser: LanguageConfiguration.Tokeniser?  // cache the tokeniser
@@ -140,11 +97,6 @@ class CodeStorageDelegate: NSObject, NSTextStorageDelegate {
     let setText: (String) -> Void
     
     private(set) var lineMap = LineMap<LineInfo>(string: "")
-    
-    /// The message bundle IDs that got invalidated by the last editing operation because the lines to which they were
-    /// attached got changed.
-    ///
-    private(set) var lastInvalidatedMessageIDs: [LineInfo.MessageBundle.ID] = []
     
     /// If the last text change was a one-character addition, which completed a token, then that token is remembered here
     /// together with its range until the next text change.
@@ -185,52 +137,24 @@ class CodeStorageDelegate: NSObject, NSTextStorageDelegate {
         super.init()
     }
     
-    
-    //  deinit {
-    //    Task { [languageService] in
-    //      try await languageService?.stop()
-    //    }
-    //  }
-    
-    
+
     
     // MARK: Updates
     
-    /// Reinitialise the code storage delegate with a new language.
+    /// Change the language for a specific range in the code storage.
     ///
-    /// - Parameter language: The new language.
-    ///
-    /// This implies stopping any already running language service first.
-    ///
+    /// - Parameters:
+    ///   - language: The new language configuration.
+    ///   - codeStorage: The code storage to update.
+    ///   - range: The range to apply the new language to.
     func change(language: LanguageConfiguration, for codeStorage: CodeStorage, in range: NSRange) async throws {
         
+        codeBlockManager?.updateCodeBlock(at: range, newLanguage: language)
         
         self.tokeniser = Tokeniser(for: language.tokenDictionary)
         let _ = tokenise(range: NSRange(location: 0, length: codeStorage.length), in: codeStorage)
     }
-    //
-    //    // MARK: Updates
-    //
-    //    /// Change the language for a specific range in the code storage.
-    //    ///
-    //    /// - Parameters:
-    //    ///   - language: The new language configuration.
-    //    ///   - codeStorage: The code storage to update.
-    //    ///   - range: The range to apply the new language to.
-    //    func change(language: LanguageConfiguration, for codeStorage: CodeStorage, in range: NSRange) async throws {
-    //        // Update the code block manager with the new language for this range
-    //        codeBlockManager?.updateCodeBlock(at: range, newLanguage: language)
-    //
-    //        // Ensure we have a tokeniser for this language
-    //        if tokenisers[language] == nil {
-    //            tokenisers[language] = Tokeniser(for: language.tokenDictionary)
-    //        }
-    //
-    //        // Tokenize the affected range
-    //        let _ = self.tokenise(range: range, in: codeStorage)
-    //    }
-    
-    
+
     
     // MARK: Delegate methods
     
@@ -255,14 +179,13 @@ class CodeStorageDelegate: NSObject, NSTextStorageDelegate {
         }
         
         // Determine the ids of message bundles that are invalidated by this edit.
-        let lines = lineMap.linesAffected(by: editedRange, changeInLength: delta)
-        lastInvalidatedMessageIDs = lines.compactMap{ lineMap.lookup(line: $0)?.info?.messages?.id  }
-        
-        let endColumn = if let beforeLine     = lines.last,
-            let beforeLineInfo = lineMap.lookup(line: beforeLine)
-        {
-            editedRange.max - delta - beforeLineInfo.range.location
-        } else { 0 }
+//        let lines = lineMap.linesAffected(by: editedRange, changeInLength: delta)
+//        
+//        let endColumn = if let beforeLine = lines.last,
+//            let beforeLineInfo = lineMap.lookup(line: beforeLine)
+//        {
+//            editedRange.max - delta - beforeLineInfo.range.location
+//        } else { 0 }
         
         lineMap.updateAfterEditing(string: textStorage.string, range: editedRange, changeInLength: delta)
         var (affectedRange: highlightingRange, lines: highlightingLines) = tokenise(range: editedRange, in: textStorage)
@@ -808,77 +731,5 @@ extension CodeStorageDelegate {
 } // END CodeStorageDelegate extension
 
 
-// MARK: -
-// MARK: Messages
 
-extension CodeStorageDelegate {
-    
-    /// Add the given message to the line info of the line where the message is located.
-    ///
-    /// - Parameter message: The message to add.
-    /// - Returns: The message bundle to which the message was added, or `nil` if the line for which the message is
-    ///     intended doesn't exist.
-    ///
-    /// NB: Ignores messages for lines that do not exist in the line map. A message may not be added to multiple lines.
-    ///
-    func add(message: TextLocated<Message>) -> LineInfo.MessageBundle? {
-        guard var info = lineMap.lookup(line: message.location.zeroBasedLine)?.info else { return nil }
-        
-        if info.messages != nil {
-            
-            // Add a message to an existing message bundle for this line
-            info.messages?.add(message: message.entity)
-            
-        } else {
-            
-            // Create a new message bundle for this line with the new message
-            info.messages = LineInfo.MessageBundle(messages: [message.entity])
-            
-        }
-        lineMap.setInfoOf(line: message.location.zeroBasedLine, to: info)
-        return info.messages
-    }
-    
-    /// Remove the given message from the line info in which it is located. This function is quite expensive.
-    ///
-    /// - Parameter message: The message to remove.
-    /// - Returns: The updated message bundle from which the message was removed together with the line where it occured,
-    ///     or `nil` if the message occurs in no line bundle.
-    ///
-    /// NB: Ignores messages that do not exist in the line map. It is considered an error if a message exists at multiple
-    ///     lines. In this case, the occurences at the first such line will be used.
-    ///
-    func remove(message: Message) -> (LineInfo.MessageBundle, Int)? {
-        
-        for line in lineMap.lines.indices {
-            if var info = lineMap.lines[line].info {
-                
-                info.messages?.remove(message: message)
-                lineMap.setInfoOf(line: line, to: info)
-                if let messages = info.messages { return (messages, line) } else { return nil }
-                
-            }
-        }
-        return nil
-    }
-    
-    /// Returns the message bundle associated with the given line if it exists.
-    ///
-    /// - Parameter line: The line for which we want to know the associated message bundle.
-    /// - Returns: The message bundle associated with the given line or `nil`.
-    ///
-    /// NB: In case that the line does not exist, an empty array is returned.
-    ///
-    func messages(at line: Int) -> LineInfo.MessageBundle? { return lineMap.lookup(line: line)?.info?.messages }
-    
-    /// Remove all messages associated with a given line.
-    ///
-    /// - Parameter line: The line whose messages ought ot be removed.
-    ///
-    func removeMessages(at line: Int) {
-        guard var info = lineMap.lookup(line: line)?.info else  { return }
-        
-        info.messages = nil
-        lineMap.setInfoOf(line: line, to: info)
-    }
-}
+
