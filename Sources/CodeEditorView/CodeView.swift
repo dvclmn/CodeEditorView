@@ -361,7 +361,7 @@ final class CodeView: NSTextView {
     private var didChangeNotificationObserver:    NSObjectProtocol?
     
     // Code blocks
-    @Invalidating(.layout, .display)
+//    @Invalidating(.layout, .display)
     private var codeBlockManager = CodeBlockManager()
     
     /// Contains the line on which the insertion point was located, the last time the selection range got set (if the

@@ -18,50 +18,92 @@ import Rearrange
 
 private let logger = Logger(subsystem: "org.justtesting.CodeEditorView", category: "Tokeniser")
 
-public enum RegexWrapper: RegexComponent, Equatable, Hashable {
+public enum RegexWrapper: RegexComponent {
     
-    public typealias RegexOutput = AnyRegexOutput
+    //    public var regex: Regex<AnyRegexOutput>
+    
+    
+    //    public typealias RegexOutput = AnyRegexOutput
     
     case substring(Regex<Substring>)
     case anyOutput(Regex<AnyRegexOutput>)
     case markdownPair(Regex<(Substring, Substring)>)
-    case component(Regex<any RegexComponent>)
+    case component(any RegexComponent)
+//    case builder(() -> any RegexComponent)
     
-    var anyOutputRegex: Regex<AnyRegexOutput> {
+    public var regex: Regex<AnyRegexOutput> {
         switch self {
         case .substring(let regex):
-            return Regex(regex)
+            return regex.map { AnyRegexOutput($0) }
         case .anyOutput(let regex):
             return regex
         case .markdownPair(let regex):
-            return Regex(regex)
+            return regex.map { AnyRegexOutput(($0.0, $0.1)) }
         case .component(let component):
-            return Regex {
-                component as RegexComponent
-            }
-            
+            return component.regex.map { AnyRegexOutput($0) }
+//        case .builder(let builder):
+//            return builder().regex.map { AnyRegexOutput($0) }
         }
     }
     
     
     
-    public var regex: Regex<AnyRegexOutput> {
-        anyOutputRegex
+    public func match(_ input: String) -> AnyRegexOutput? {
+        if let match = try? self.regex.wholeMatch(in: input) {
+            return match.output
+        }
+        return nil
     }
-} // END regex wrapper
+}
+// END regex wrapper
+
 
 extension RegexWrapper {
-    init<Component: RegexComponent>(@RegexComponentBuilder _ component: () -> Component) {
-        self = .component(component())
+    static func builder(@RegexComponentBuilder _ builder: @escaping () -> any RegexComponent) -> RegexWrapper {
+        return .builder(builder)
     }
 }
 
 
-
-public enum EditorMode: Equatable, Hashable {
+public enum EditorMode {
     case markdown
-    case code(language: CodeLanguage)
+    case code(language: LanguageConfiguration)
+    
 }
+
+//extension EditorMode: Hashable {
+//    static func == (lhs: GridPoint, rhs: GridPoint) -> Bool {
+//        return lhs.x == rhs.x && lhs.y == rhs.y
+//    }
+//
+//
+//    func hash(into hasher: inout Hasher) {
+//        hasher.combine(x)
+//        hasher.combine(y)
+//    }
+//
+//
+//    public static func == (lhs: EditorMode, rhs: EditorMode) -> Bool {
+//        switch (lhs, rhs) {
+//        case (.markdown, .markdown):
+//            return true
+//        case let (.code(lhsLanguage), .code(rhsLanguage)):
+//            return lhsLanguage == rhsLanguage
+//        default:
+//            return false
+//        }
+//    }
+//
+//    public func hash(into hasher: inout Hasher) {
+//        switch self {
+//        case .markdown:
+//            hasher.combine(0)
+//        case .code(let language):
+//            hasher.combine(1)
+//            hasher.combine(language)
+//        }
+//    }
+//}
 
 
 // MARK: -
@@ -93,31 +135,23 @@ public struct TokenDescription<TokenType, StateType> {
     ///
     public let action: TokenAction<TokenType, StateType>
     
-    public let isMarkdown: Bool
+    public init(
+        regex: RegexWrapper,
+        singleLexeme: String? = nil,
+        action: TokenAction<TokenType, StateType>
+    ) {
+        self.regex = regex
+        self.singleLexeme = singleLexeme
+        self.action = action
+    }
     
-    //    public init(
-    //        regex: Regex<AnyRegexOutput>,
-    //        //        markdownRegex: Regex<(Substring, Substring)>,
-    //        singleLexeme: String? = nil,
-    //        action: TokenAction<TokenType, StateType>,
-    //        isMarkdown: Bool = false
-    //    ) {
-    //        self.regex          = regex
-    //        //    self.markdownRegex  = markdownRegex
-    //        self.singleLexeme   = singleLexeme
-    //        self.action         = action
-    //        self.isMarkdown = isMarkdown
-    //    }
-    
+    // Keep the existing initializers, but update them to use RegexWrapper
     public init(
         regex: Regex<Substring>,
         singleLexeme: String? = nil,
         action: TokenAction<TokenType, StateType>
     ) {
-
-        self.regex = .substring(regex)
-        self.singleLexeme = singleLexeme
-        self.action = action
+        self.init(regex: .substring(regex), singleLexeme: singleLexeme, action: action)
     }
     
     public init(
@@ -125,9 +159,7 @@ public struct TokenDescription<TokenType, StateType> {
         singleLexeme: String? = nil,
         action: TokenAction<TokenType, StateType>
     ) {
-        self.regex = .anyOutput(regex)
-        self.singleLexeme = singleLexeme
-        self.action = action
+        self.init(regex: .anyOutput(regex), singleLexeme: singleLexeme, action: action)
     }
     
     public init(
@@ -135,14 +167,21 @@ public struct TokenDescription<TokenType, StateType> {
         singleLexeme: String? = nil,
         action: TokenAction<TokenType, StateType>
     ) {
-        self.regex = .markdownPair(markdownRegex)
-        self.singleLexeme = singleLexeme
-        self.action = action
+        self.init(regex: .markdown(markdownRegex), singleLexeme: singleLexeme, action: action)
+    }
+    
+    // Add a new initializer for regex builders
+    public init(
+        regexBuilder: @escaping () -> any RegexComponent,
+        singleLexeme: String? = nil,
+        action: TokenAction<TokenType, StateType>
+    ) {
+        self.init(regex: .builder(regexBuilder), singleLexeme: singleLexeme, action: action)
     }
     
 }
 
-public protocol TokeniserState: Equatable, Hashable {
+public protocol TokeniserState {
     
     /// Finite projection of tokeniser state to determine sub-tokenisers (and hence, the regular expression to use)
     ///
@@ -177,8 +216,35 @@ public struct TokenAttribute<TokenType> {
 /// preference; i.e., earlier elements take precedence.
 ///
 
+public struct EditorModeKey: Hashable {
+    public let mode: EditorMode
+    
+    public func hash(into hasher: inout Hasher) {
+        switch mode {
+        case .markdown:
+            hasher.combine(0)
+        case .code(let language):
+            hasher.combine(1)
+            hasher.combine(language.name)  // Assuming LanguageConfiguration has a 'name' property
+        }
+    }
+    
+    public static func == (lhs: EditorModeKey, rhs: EditorModeKey) -> Bool {
+        switch (lhs.mode, rhs.mode) {
+        case (.markdown, .markdown):
+            return true
+        case let (.code(lhs), .code(rhs)):
+            return lhs.name == rhs.name
+        default:
+            return false
+        }
+    }
+}
+
+// Then use this key in your dictionary:
 public typealias TokenDictionary<TokenType, StateType: TokeniserState> =
-[EditorMode: [StateType.StateTag: [TokenDescription<TokenType, StateType>]]]
+[EditorModeKey: [StateType.StateTag: [TokenDescription<TokenType, StateType>]]]
+
 
 
 /// Pre-compiled regular expression tokeniser.

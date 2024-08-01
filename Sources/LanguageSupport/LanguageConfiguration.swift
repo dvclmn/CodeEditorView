@@ -26,26 +26,15 @@ import AppKit
 private let logger = Logger(subsystem: "org.justtesting.CodeEditorView", category: "LanguageConfiguration")
 
 
-public struct CodeLanguage: Equatable, Hashable {
-    let identifier: String
-    
-    static let swift = CodeLanguage(identifier: "swift")
-    static let python = CodeLanguage(identifier: "python")
-    static let javascript = CodeLanguage(identifier: "javascript")
-    
-    static let unknown = CodeLanguage(identifier: "unknown")
-}
-
-
 /// Specifies the language-dependent aspects of a code editor.
 ///
-public struct LanguageConfiguration: Equatable, Hashable {
+public struct LanguageConfiguration {
     
-    public enum MarkdownSyntax: Equatable, Hashable {
+    public enum MarkdownSyntax: Equatable {
         case bold
         case italic
         case inlineCode
-        case codeBlock(LanguageConfiguration?)
+        case codeBlock
         
         var regex: Regex<(Substring, Substring)> {
             switch self {
@@ -76,7 +65,7 @@ public struct LanguageConfiguration: Equatable, Hashable {
     
     /// The various categories of types.
     ///
-    public enum TypeFlavour: Equatable, Hashable {
+    public enum TypeFlavour: Equatable {
         case `class`
         case `struct`
         case `enum`
@@ -87,7 +76,7 @@ public struct LanguageConfiguration: Equatable, Hashable {
     
     /// Flavours of identifiers and operators.
     ///
-    public enum Flavour: Equatable, Hashable {
+    public enum Flavour: Equatable {
         case module
         case `type`(TypeFlavour)
         case parameter
@@ -110,7 +99,7 @@ public struct LanguageConfiguration: Equatable, Hashable {
     
     /// Supported kinds of tokens.
     ///
-    public enum Token: Equatable, Hashable {
+    public enum Token: Equatable {
         case roundBracketOpen
         case roundBracketClose
         case squareBracketOpen
@@ -192,14 +181,14 @@ public struct LanguageConfiguration: Equatable, Hashable {
     public enum State: TokeniserState {
         
         case tokenisingMarkdown
-        case tokenisingCode(CodeState)
+        case tokenisingCode(state: CodeState)
         
-        public enum CodeState: Equatable, Hashable {
-            case code(language: CodeLanguage)
-            case comment(language: CodeLanguage, depth: Int)
+        public enum CodeState {
+            case code(language: LanguageConfiguration)
+            case comment(language: LanguageConfiguration, depth: Int)
         }
         
-        public enum Tag: Equatable, Hashable {
+        public enum Tag {
                 case markdown
                 case code
                 case comment
@@ -244,6 +233,7 @@ public struct LanguageConfiguration: Equatable, Hashable {
     ///     different `name`s.
     ///
     public let name: String
+    
     
     /// Whether square bracket characters act as brackets.
     ///
@@ -303,11 +293,6 @@ public struct LanguageConfiguration: Equatable, Hashable {
     ///
 //    public let languageService: LanguageService?
     
-    
-    //    public let markdownSyntax: MarkdownSyntax?
-    
-    public let isMarkdown: Bool
-    
     //    public let markdownSyntax: MarkdownSyntax?
     
     /// Defines a language configuration.
@@ -324,9 +309,7 @@ public struct LanguageConfiguration: Equatable, Hashable {
         identifierRegex: RegexWrapper? = nil,
         operatorRegex: RegexWrapper? = nil,
         reservedIdentifiers: [String] = [],
-        reservedOperators: [String] = [],
-//        languageService: LanguageService? = nil,
-        isMarkdown: Bool = false
+        reservedOperators: [String] = []
     )
     {
         self.name                   = name
@@ -341,8 +324,6 @@ public struct LanguageConfiguration: Equatable, Hashable {
         self.operatorRegex          = operatorRegex
         self.reservedIdentifiers    = reservedIdentifiers
         self.reservedOperators      = reservedOperators
-//        self.languageService        = languageService
-        self.isMarkdown             = isMarkdown
     }
     
     /// Yields the lexeme of the given token under this language configuration if the token has got a unique lexeme.
@@ -407,7 +388,7 @@ extension LanguageConfiguration {
     public static let hexalLit: RegexWrapper    = .substring(/(?:[0-9A-Fa-f]_*)+/)
     public static let optNegation: RegexWrapper = .substring(/(?:\B-|\b)/)
     
-    public static let exponentLit: RegexWrapper = RegexWrapper {
+    public static let exponentLit: RegexWrapper = RegexWrapper.builder {
         /[eE](?:[+-])?/
         decimalLit
     }
@@ -525,9 +506,9 @@ extension LanguageConfiguration {
         case .tokenisingCode(let codeState):
             switch codeState {
             case .code(let language):
-                return .tokenisingCode(.comment(language: language, depth: 1))
+                return .tokenisingCode(state: .comment(language: language, depth: 1))
             case .comment(let language, let depth):
-                return .tokenisingCode(.comment(language: language, depth: depth + 1))
+                return .tokenisingCode(state: .comment(language: language, depth: depth + 1))
             }
         }
     }
@@ -539,12 +520,12 @@ extension LanguageConfiguration {
         case .tokenisingCode(let codeState):
             switch codeState {
             case .code(let language):
-                return .tokenisingCode(.code(language: language))
+                return .tokenisingCode(state: .code(language: language))
             case .comment(let language, let depth):
                 if depth > 1 {
-                    return .tokenisingCode(.comment(language: language, depth: depth - 1))
+                    return .tokenisingCode(state: .comment(language: language, depth: depth - 1))
                 } else {
-                    return .tokenisingCode(.code(language: language))
+                    return .tokenisingCode(state: .code(language: language))
                 }
             }
         }
@@ -578,29 +559,29 @@ extension LanguageConfiguration {
         
         
         
-        let codeBlockStart = TokenDescription(
-            regex: /```(\w+)?/,
-            action: (token: .codeBlockDelimiter, transition: { state in
-                switch state {
-                case .tokenisingMarkdown:
-                    return .tokenisingCode(.code(language: CodeLanguage(name: $1 ?? "default")))
-                case .tokenisingCode:
-                    return state // or handle this case as needed
-                }
-            })
-        )
-
-        let codeBlockEnd = TokenDescription(
-            regex: /```/,
-            action: (token: .codeBlockDelimiter, transition: { state in
-                switch state {
-                case .tokenisingCode:
-                    return .tokenisingMarkdown
-                case .tokenisingMarkdown:
-                    return state // or handle this case as needed
-                }
-            })
-        )
+//        let codeBlockStart = TokenDescription(
+//            regex: /```(\w+)?/,
+//            action: (token: .codeBlockDelimiter, transition: { state in
+//                switch state {
+//                case .tokenisingMarkdown:
+//                    return .tokenisingCode
+//                case .tokenisingCode:
+//                    return state // or handle this case as needed
+//                }
+//            })
+//        )
+//
+//        let codeBlockEnd = TokenDescription(
+//            regex: /```/,
+//            action: (token: .codeBlockDelimiter, transition: { state in
+//                switch state {
+//                case .tokenisingCode:
+//                    return .tokenisingMarkdown
+//                case .tokenisingMarkdown:
+//                    return state // or handle this case as needed
+//                }
+//            })
+//        )
 
         
 //        
@@ -622,11 +603,7 @@ extension LanguageConfiguration {
 //            })
 //        )
         
-        
-        if isMarkdown {
-            //            codeTokens.
-        }
-        
+
         if supportsSquareBrackets {
             codeTokens.append(contentsOf:
                                 [ TokenDescription(regex: /\[/, singleLexeme: "[", action: token(.squareBracketOpen))
@@ -639,9 +616,45 @@ extension LanguageConfiguration {
                                   , TokenDescription(regex: /}/, singleLexeme: "}", action: token(.squareBracketClose))
                                 ])
         }
-        if let regex = stringRegex { codeTokens.append(TokenDescription(regex: regex, action: token(.string))) }
-        if let regex = characterRegex { codeTokens.append(TokenDescription(regex: regex, action: token(.character))) }
-        if let regex = numberRegex { codeTokens.append(TokenDescription(regex: regex, action: token(.number))) }
+        
+        if let regex = stringRegex {
+            codeTokens.append(TokenDescription(
+                regexBuilder: { regex.match },
+                action: token(.number)
+            ))
+        }
+
+        if let identifierRegex = configuration.identifierRegex {
+            codeTokens.append(TokenDescription(
+                regexBuilder: { identifierRegex.match },
+                action: token(.identifier)
+            ))
+        }
+
+        
+        if let regex = stringRegex {
+            codeTokens.append(TokenDescription(matcher: { input in
+                regex.match(input) != nil
+            }, action: token(.string)))
+        }
+
+        if let regex = characterRegex {
+            codeTokens.append(TokenDescription(matcher: { input in
+                regex.match(input) != nil
+            }, action: token(.character)))
+        }
+
+        if let regex = numberRegex {
+            codeTokens.append(TokenDescription(matcher: { input in
+                regex.match(input) != nil
+            }, action: token(.number)))
+        }
+        
+        
+        
+//        if let regex = stringRegex { codeTokens.append(TokenDescription(regex: regex, action: token(.string))) }
+//        if let regex = characterRegex { codeTokens.append(TokenDescription(regex: regex, action: token(.character))) }
+//        if let regex = numberRegex { codeTokens.append(TokenDescription(regex: regex, action: token(.number))) }
         
         if let lexeme = singleLineComment {
             codeTokens.append(TokenDescription(regex: Regex{ lexeme },

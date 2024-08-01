@@ -210,9 +210,8 @@ class CodeStorageDelegate: NSObject, NSTextStorageDelegate {
         }
         
         // Tokenize the affected range
-        tokenise(range: range, in: codeStorage)
+        let _ = self.tokenise(range: range, in: codeStorage)
     }
-    
     
     
     
@@ -406,109 +405,114 @@ extension CodeStorageDelegate {
     
     // MARK: Tokenization
     
-
+    
     func tokenise(range originalRange: NSRange, in textStorage: NSTextStorage) -> (affectedRange: NSRange, lines: Int) {
         
         // NB: The range property of the tokens is in terms of the entire text (not just `line`).
         func tokeniseAndUpdateInfo<Tokens: Collection<Tokeniser<LanguageConfiguration.Token,
-                                                                LanguageConfiguration.State>.Token>>
-        (for line: Int,
-         tokens: Tokens,
-         commentDepth: inout Int,
-         lastCommentStart: inout Int?)
+                                                                LanguageConfiguration.State>.Token>> (
+                                                                    for line: Int,
+                                                                    tokens: Tokens,
+                                                                    commentDepth: inout Int,
+                                                                    lastCommentStart: inout Int?
+                                                                )
         {
             
-            if let lineRange = lineMap.lookup(line: line)?.range {
+            guard let lineRange = lineMap.lookup(line: line)?.range else {
+                return
+            }
+            
+            if visualDebugging {
+                for token in tokens {
+                    textStorage.addAttribute(.underlineColor, value: visualDebuggingTokenColour, range: range)
+                    if token.range.length > 0 {
+                        textStorage.addAttribute(.underlineStyle,
+                                                 value: NSNumber(value: NSUnderlineStyle.double.rawValue),
+                                                 range: NSRange(location: token.range.location, length: 1))
+                    }
+                    if token.range.length > 1 {
+                        textStorage.addAttribute(.underlineStyle,
+                                                 value: NSNumber(value: NSUnderlineStyle.single.rawValue),
+                                                 range: NSRange(location: token.range.location + 1,
+                                                                length: token.range.length - 1))
+                    }
+                }
+            }
+            
+            let localisedTokens = tokens.map{ $0.shifted(by: -lineRange.location) }
+            
+            var lineInfo = LineInfo(
+                commentDepthStart: commentDepth,
+                commentDepthEnd: 0,
+                roundBracketDiff: 0,
+                squareBracketDiff: 0,
+                curlyBracketDiff: 0,
+                tokens: localisedTokens,
+                commentRanges: []
+            )
+            
+        tokenLoop: for token in localisedTokens {
+            
+            switch token.token {
                 
-                if visualDebugging {
+            case .roundBracketOpen:
+                lineInfo.roundBracketDiff += 1
+                
+            case .roundBracketClose:
+                lineInfo.roundBracketDiff -= 1
+                
+            case .squareBracketOpen:
+                lineInfo.squareBracketDiff += 1
+                
+            case .squareBracketClose:
+                lineInfo.squareBracketDiff -= 1
+                
+            case .curlyBracketOpen:
+                lineInfo.curlyBracketDiff += 1
+                
+            case .curlyBracketClose:
+                lineInfo.curlyBracketDiff -= 1
+                
+            case .singleLineComment:  // set comment attribute from token start token to the end of this line
+                let commentStart = token.range.location
+                lineInfo.commentRanges.append(NSRange(location: commentStart, length: lineRange.length - commentStart))
+                break tokenLoop   // the rest of the tokens are ignored as they are commented out and we'll rescan on change
+                
+            case .nestedCommentOpen:
+                if commentDepth == 0 { lastCommentStart = token.range.location }    // start of an outermost nested comment
+                commentDepth += 1
+                
+            case .nestedCommentClose:
+                if commentDepth > 0 {
                     
-                    for token in tokens {
-                        textStorage.addAttribute(.underlineColor, value: visualDebuggingTokenColour, range: range)
-                        if token.range.length > 0 {
-                            textStorage.addAttribute(.underlineStyle,
-                                                     value: NSNumber(value: NSUnderlineStyle.double.rawValue),
-                                                     range: NSRange(location: token.range.location, length: 1))
-                        }
-                        if token.range.length > 1 {
-                            textStorage.addAttribute(.underlineStyle,
-                                                     value: NSNumber(value: NSUnderlineStyle.single.rawValue),
-                                                     range: NSRange(location: token.range.location + 1,
-                                                                    length: token.range.length - 1))
-                        }
+                    commentDepth -= 1
+                    
+                    // If we just closed an outermost nested comment, attribute the comment range
+                    if let start = lastCommentStart, commentDepth == 0
+                    {
+                        lineInfo.commentRanges.append(NSRange(location: start, length: token.range.max - start))
+                        lastCommentStart = nil
                     }
                 }
                 
-                let localisedTokens = tokens.map{ $0.shifted(by: -lineRange.location) }
-                var lineInfo         = LineInfo(commentDepthStart: commentDepth,
-                                                commentDepthEnd: 0,
-                                                roundBracketDiff: 0,
-                                                squareBracketDiff: 0,
-                                                curlyBracketDiff: 0,
-                                                tokens: localisedTokens,
-                                                commentRanges: [])
-                
-            tokenLoop: for token in localisedTokens {
-                
-                switch token.token {
-                    
-                case .roundBracketOpen:
-                    lineInfo.roundBracketDiff += 1
-                    
-                case .roundBracketClose:
-                    lineInfo.roundBracketDiff -= 1
-                    
-                case .squareBracketOpen:
-                    lineInfo.squareBracketDiff += 1
-                    
-                case .squareBracketClose:
-                    lineInfo.squareBracketDiff -= 1
-                    
-                case .curlyBracketOpen:
-                    lineInfo.curlyBracketDiff += 1
-                    
-                case .curlyBracketClose:
-                    lineInfo.curlyBracketDiff -= 1
-                    
-                case .singleLineComment:  // set comment attribute from token start token to the end of this line
-                    let commentStart = token.range.location
-                    lineInfo.commentRanges.append(NSRange(location: commentStart, length: lineRange.length - commentStart))
-                    break tokenLoop   // the rest of the tokens are ignored as they are commented out and we'll rescan on change
-                    
-                case .nestedCommentOpen:
-                    if commentDepth == 0 { lastCommentStart = token.range.location }    // start of an outermost nested comment
-                    commentDepth += 1
-                    
-                case .nestedCommentClose:
-                    if commentDepth > 0 {
-                        
-                        commentDepth -= 1
-                        
-                        // If we just closed an outermost nested comment, attribute the comment range
-                        if let start = lastCommentStart, commentDepth == 0
-                        {
-                            lineInfo.commentRanges.append(NSRange(location: start, length: token.range.max - start))
-                            lastCommentStart = nil
-                        }
-                    }
-                    
-                default:
-                    break
-                }
+            default:
+                break
             }
+        }  // END token loop
+            
+            // If the line ends while we are still in an open comment, we need a comment attribute up to the end of the line
+            if let start = lastCommentStart, commentDepth > 0 {
                 
-                // If the line ends while we are still in an open comment, we need a comment attribute up to the end of the line
-                if let start = lastCommentStart, commentDepth > 0 {
-                    
-                    lineInfo.commentRanges.append(NSRange(location: start, length: lineRange.length - start))
-                    lastCommentStart = 0
-                    
-                }
-                
-                // Retain computed line information
-                lineInfo.commentDepthEnd = commentDepth
-                lineMap.setInfoOf(line: line, to: lineInfo)
+                lineInfo.commentRanges.append(NSRange(location: start, length: lineRange.length - start))
+                lastCommentStart = 0
             }
-        }
+            
+            // Retain computed line information
+            lineInfo.commentDepthEnd = commentDepth
+            lineMap.setInfoOf(line: line, to: lineInfo)
+            
+        } // END tokeniseAndUpdateInfo
+        
         
         guard let tokeniser = tokeniser else { return (affectedRange: originalRange, lines: 1) }
         
@@ -526,17 +530,20 @@ extension CodeStorageDelegate {
         // the previous line, because the line info of the current line was set to `nil` during updating the line map.
         
         
+        let language: LanguageConfiguration
         
-        let (_, language) = codeBlockManager?.languageAndRangeContaining(location: range.location)
+        if let codeBlockManager = self.codeBlockManager {
+            language = codeBlockManager.languageAndRangeContaining(location: range.location).language
+        } else {
+            language = .none // Make sure you have a default language defined
+        }
         
         
         let initialCommentDepth = lineMap.lookup(line: lines.startIndex - 1)?.info?.commentDepthEnd ?? 0
         
         let initialTokeniserState: LanguageConfiguration.State = initialCommentDepth > 0
-        ? .tokenisingCode(.comment(language: language, depth: initialCommentDepth))
-        : .tokenisingCode(.code(language: language))
-        
-        
+        ? .tokenisingCode(state: .comment(language: language, depth: initialCommentDepth))
+        : .tokenisingCode(state: .code(language: language))
         
         
         // Set the token attribute in range.
@@ -550,9 +557,10 @@ extension CodeStorageDelegate {
         //
         // - `lastCommentStart` keeps track of the last start of an *outermost* nested comment.
         //
-        var commentDepth     = initialCommentDepth
+        var commentDepth = initialCommentDepth
         var lastCommentStart = initialCommentDepth > 0 ? lineMap.lookup(line: lines.startIndex)?.range.location : nil
         var remainingTokens  = tokens
+        
         for line in lines {
             
             guard let lineRange = lineMap.lookup(line: line)?.range else { continue }
@@ -568,23 +576,23 @@ extension CodeStorageDelegate {
         // Continue to re-process line by line until there is no longer a change in the comment depth before and after
         // re-processing
         //
-        var currentLine       = lines.endIndex
+        var currentLine = lines.endIndex
         var highlightingRange = range
         var highlightingLines = lines.count
+        
+        
     trailingLineLoop: while currentLine < lineMap.lines.count {
         
-        if let lineEntry      = lineMap.lookup(line: currentLine),
-           let lineEntryRange = Range<String.Index>(lineEntry.range, in: textStorage.string)
-        {
+        if let lineEntry = lineMap.lookup(line: currentLine), let lineEntryRange = Range<String.Index>(lineEntry.range, in: textStorage.string) {
             
             // If this line has got a line info entry and the expected comment depth at the start of the line matches
             // the current comment depth, we reached the end of the range of lines affected by this edit => break the loop
             if let depth = lineEntry.info?.commentDepthStart, depth == commentDepth { break trailingLineLoop }
             
+            
             // Re-tokenise line
-            let initialTokeniserState: LanguageConfiguration.State
-            = commentDepth > 0 ? .tokenisingComment(commentDepth) : .tokenisingCode,
-            tokens = textStorage
+            let initialTokeniserState: LanguageConfiguration.State = commentDepth > 0 ? .tokenisingCode(state: .comment(language: language, depth: commentDepth)) : .tokenisingCode(state: .code(language: language)),
+                tokens = textStorage
                 .string[lineEntryRange]
                 .tokenise(with: tokeniser, state: initialTokeniserState)
                 .map{ $0.shifted(by: lineEntry.range.location) } // adjust tokens to be relative to the whole `string`
@@ -599,7 +607,8 @@ extension CodeStorageDelegate {
             highlightingRange = NSUnionRange(highlightingRange, lineEntry.range)
             highlightingLines += 1
             
-        }
+        } // END line entry
+        
         currentLine += 1
     }
         
@@ -611,7 +620,8 @@ extension CodeStorageDelegate {
         }
         
         return (affectedRange: highlightingRange, lines: highlightingLines)
-    }
+        
+    } // END tokenise
     
     /// Query semantic tokens for the given lines from the language service (if available) and merge them into the token
     /// information for those lines (maintained in the line map),
@@ -620,44 +630,7 @@ extension CodeStorageDelegate {
     ///     lines: The lines for which semantic token information is requested.
     ///     textStorage: The text storage whose contents is being tokenised.
     ///
-    //  func requestSemanticTokens(for lines: Range<Int>, in textStorage: NSTextStorage) {
-    //    guard let firstLine = lines.first else { return }
-    //
-    //    Task {
-    //      do {
-    //        if let semanticTokens = try await languageService?.tokens(for: lines) {
-    //
-    //          guard lines.count == semanticTokens.count else {
-    //            logger.trace("Language service returned an array of incorrect length; expected \(lines.count), but got \(semanticTokens.count)")
-    //            return
-    //          }
-    //
-    //          // We need to avoid concurrent write access to the line map; hence, use the main actor.
-    //          Task { @MainActor in
-    //
-    //            // Merge the semantic tokens into the syntactic tokens per line
-    //            for i in 0..<lines.count {
-    //              merge(semanticTokens: semanticTokens[i], into: firstLine + i)
-    //            }
-    //
-    //            // Request redrawing for those lines
-    //            if let textStorageObserver = textStorage.textStorageObserver {
-    //              let range = lineMap.charRangeOf(lines: lines)
-    //              textStorageObserver.processEditing(for: textStorage,
-    //                                                 edited: .editedAttributes,
-    //                                                 range: range,
-    //                                                 changeInLength: 0,
-    //                                                 invalidatedRange: NSRange(location: 0, length: textStorage.string.count))
-    //                                                                   // ^^If we don't invalidate the whole text, we
-    //                                                                   // somehow lose highlighting for everything outside
-    //                                                                   // of the invalidated range.
-    //            }
-    //          }
-    //
-    //        }
-    //      } catch let error { logger.trace("Failed to get semantic tokens for line range \(lines): \(error.localizedDescription)") }
-    //    }
-    //  }
+
     
     /// Merge semantic token information for one line into the line map.
     ///

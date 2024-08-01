@@ -51,9 +51,6 @@ struct TelemetryMode: View {
             CodeEditor(
                 text: .constant(TestStrings.Markdown.basicMarkdown),
                 position: .constant(CodeEditor.Position()),
-                messages: .constant(Set()),
-                telemetry: $telemetry,
-                language: .markdown(),
                 layout: .init(showMinimap: false, wrapText: true)
             )
             
@@ -72,15 +69,6 @@ struct TelemetryMode: View {
         
         
         
-    }
-    
-    var modeDescription: String {
-        switch telemetry.currentMode {
-        case .markdown:
-            return "Markdown"
-        case .code(let language):
-            return "Code (\(language))"
-        }
     }
 }
 #Preview {

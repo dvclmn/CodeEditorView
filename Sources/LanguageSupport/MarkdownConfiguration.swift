@@ -102,7 +102,7 @@ extension LanguageConfiguration {
         return LanguageConfiguration(
             name: "Markdown",
             supportsSquareBrackets: true,
-            supportsCurlyBrackets: false,
+            supportsCurlyBrackets: false
 //            stringRegex: emphasisRegex,
 //            characterRegex: nil,
 //            numberRegex: nil,  // Markdown doesn't have special number formatting
@@ -114,7 +114,6 @@ extension LanguageConfiguration {
 //            reservedOperators: markdownReservedOperators,
 //            languageService: languageService,
 //            markdownSyntax: markdownSyntax
-            isMarkdown: true
         )
     }
 }

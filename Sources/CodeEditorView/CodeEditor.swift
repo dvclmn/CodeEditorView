@@ -150,7 +150,7 @@ public struct CodeEditor {
     @Binding private var text:     String
     @Binding private var position: Position
     @Binding private var messages: Set<TextLocated<Message>>
-    @Binding var telemetry: Telemetry
+//    @Binding var telemetry: Telemetry
     
     /// Creates a fully configured code editor.
     ///
@@ -170,7 +170,7 @@ public struct CodeEditor {
     ///
     public init(text:                Binding<String>,
                 position:            Binding<Position>,
-                telemetry:           Binding<Telemetry>,
+//                telemetry:           Binding<Telemetry>,
                 //                language:            LanguageConfiguration = .none,
                 layout:              LayoutConfiguration = .standard,
                 breakUndoCoalescing: PassthroughSubject<(), Never>? = nil,
@@ -179,7 +179,7 @@ public struct CodeEditor {
     {
         self._text               = text
         self._position           = position
-        self._telemetry          = telemetry
+//        self._telemetry          = telemetry
         //        self.language            = language
         self.layout              = layout
         self.breakUndoCoalescing = breakUndoCoalescing
@@ -189,7 +189,7 @@ public struct CodeEditor {
     public class _Coordinator {
         @Binding fileprivate var text:     String
         @Binding fileprivate var position: Position
-        @Binding fileprivate var telemetry: CodeEditor.Telemetry
+//        @Binding fileprivate var telemetry: CodeEditor.Telemetry
         fileprivate let setActions: ((Actions) -> Void)?
         
         
@@ -211,12 +211,12 @@ public struct CodeEditor {
         init(
             text: Binding<String>,
             position: Binding<Position>,
-            telemetry: Binding<CodeEditor.Telemetry>,
+//            telemetry: Binding<CodeEditor.Telemetry>,
             setAction: ((Actions) -> Void)?
         ) {
             self._text      = text
             self._position  = position
-            self._telemetry = telemetry
+//            self._telemetry = telemetry
             self.setActions = setAction
         }
     }
@@ -488,7 +488,7 @@ extension CodeEditor: NSViewRepresentable {
         return Coordinator(
             text: $text,
             position: $position,
-            telemetry: $telemetry,
+//            telemetry: $telemetry,
             setAction: setActions
         )
     }
@@ -601,7 +601,7 @@ struct CodeEditorExample: View {
     @State private var text: String = TestStrings.paragraphsWithCode[0]
     @SceneStorage("editPosition") private var editPosition: CodeEditor.Position = CodeEditor.Position()
     
-    @State private var telemetry: CodeEditor.Telemetry = CodeEditor.Telemetry()
+//    @State private var telemetry: CodeEditor.Telemetry = CodeEditor.Telemetry()
     
     let telemetryHeight: Double = 30
     
@@ -611,7 +611,6 @@ struct CodeEditorExample: View {
             CodeEditor(
                 text: $text,
                 position: $editPosition,
-                telemetry: $telemetry,
                 layout: .init(showMinimap: false, wrapText: true)
             )
             .padding(.top)
